@@ -15,9 +15,9 @@ notiser och en rapport för föräldrar.
 | `sw.js` | Service worker: offlinecache och mottagning av notiser |
 | `manifest.json` | Gör den installerbar på hemskärmen |
 | `icons/` | App-ikoner, platshållare tills riktig grafik finns |
-| `art/crow/` | Kråkans poser, en SVG per motiv |
-| `art/crow.js` | Genererad, alla poser i en fil som appen laddar |
-| `tools/build-art.mjs` | Bygger `art/crow.js` från SVG-filerna |
+| `art/crow/`, `art/bear/` | Djurens poser, en SVG per motiv |
+| `art/crow.js`, `art/bear.js` | Genererade, alla poser i en fil som appen laddar |
+| `tools/build-art.mjs` | Bygger js-filerna från SVG-filerna |
 | `cloudflare-worker/` | Push-notiser, historik och CSV-rapport |
 
 ## Det du ändrar oftast
@@ -97,10 +97,10 @@ den ena appen över den andras prenumeration.
 * Ny nivå kostar 350 XP plus 80 per nivå.
 * Hunger sjunker 6 enheter i timmen, humör 3. Workern räknar likadant.
 * Djuret växer vid nivå 10, 20 och 30.
-* Kråkan låser upp en ny pose var femte nivå: sitter 1, nyckeln 5, kaffet 10,
-  boken 15, nöjd 20, halsbandet 25, kniven 30. Den översta upplåsta är viloläget.
-* Björnen låser i stället upp en accessoar var femte nivå: keps 3, hörlurar 8,
-  solglasögon 13, halsduk 18, ryggsäck 23, medalj 28. De två senaste syns samtidigt.
+* Båda djuren låser upp en ny pose var femte nivå. Den översta upplåsta är viloläget.
+  * Kråkan: sitter 1, nyckeln 5, kaffet 10, boken 15, nöjd 20, halsbandet 25, kniven 30.
+  * Björnen: nappflaskan 1, glassen 5, morotsdräkten 10, simglasögonen 15,
+    akustiska gitarren 20, elgitarren 25, solglasögonen 30.
 * Vid nivå 30 dyker en unge upp. En nivå senare får man välja: börja om med
   ungen, eller låta den flytta ut och fortsätta som vanligt.
 * Streak räknas bara dagar där allt blev klart.
@@ -108,8 +108,8 @@ den ena appen över den andras prenumeration.
 
 ## Grafiken
 
-**Kråkan** är riktiga illustrationer. Varje pose ligger som en egen fil i
-`art/crow/`. De bakas ihop till `art/crow.js` med:
+Båda djuren är riktiga illustrationer. Varje pose ligger som en egen fil i
+`art/crow/` och `art/bear/`. De bakas ihop till `art/crow.js` och `art/bear.js` med:
 
 ```
 node tools/build-art.mjs
@@ -117,12 +117,12 @@ node tools/build-art.mjs
 
 Kör det kommandot varje gång du lägger till, byter ut eller putsar en pose,
 annars ser appen fortfarande den gamla versionen. Kopplingen mellan humör och
-pose ligger i `CROW_MOOD_POSES` i `app.js`, och nivåernas upplåsningar i
-`CROW_IDLE_TIERS`. Vill du ta bort en pose räcker det att stryka en rad där.
+pose ligger i `CROW_MOOD_POSES` och `BEAR_MOOD_POSES` i `app.js`, och nivåernas
+upplåsningar i `CROW_IDLE_TIERS` och `BEAR_IDLE_TIERS`. Vill du byta eller ta
+bort en pose räcker det att ändra en rad där.
 
-**Björnen** ritas fortfarande som SVG i koden (`renderBearSVG`) i väntan på
-riktig grafik. Dess accessoarer sitter på ankarpunkter i `PET_ANCHORS`, så de
-värdena är det enda som behöver justeras när björnbilderna kommer.
+Björnen har fler poser i mappen än vad appen använder: dusch, bygghjälm, kudde,
+kodräkt, panda, vattenmelon, ägg på huvudet och regnhatt ligger redo att tas in.
 
 Nya poser lägger du till som SVG i `art/crow/`, ett motiv per fil, med en
 viewBox som sluter tätt om motivet.

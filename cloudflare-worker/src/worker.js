@@ -89,18 +89,26 @@ const FIXED_REMINDERS = [
     hour: 7,
     minute: 10,
     messages: [
-      "🎯 Veckans affirmation: Jag gör mitt bästa, och mitt bästa räcker.",
-      "🎯 Veckans affirmation: Jag kan lära mig svåra saker om jag ger det tid.",
-      "🎯 Veckans affirmation: Nervositet betyder att jag bryr mig, och jag kan använda den som energi.",
-      "🎯 Veckans affirmation: Jag tar ett steg i taget och litar på min egen förmåga.",
-      "🎯 Veckans affirmation: Utmaningar gör mig starkare varje gång jag försöker.",
-      "🎯 Veckans affirmation: Jag räknar mina framsteg, inte mina misstag.",
-      "🎯 Veckans affirmation: Jag duger som jag är, oavsett vad andra tycker.",
-      "🎯 Veckans affirmation: Mitt värde mäts inte i betyg eller provresultat.",
-      "🎯 Veckans affirmation: Jag har saker att bidra med som ingen annan har.",
-      "🎯 Veckans affirmation: Misstag är en del av att lära sig, inte ett bevis på motsatsen.",
-      "🎯 Veckans affirmation: Jag är schyst mot mig själv när det är tungt.",
-      "🎯 Veckans affirmation: Min röst och mina åsikter är värda att ta plats."
+      // Självkänsla och trygghet
+      "🎯 Veckans affirmation: Jag duger precis som jag är.",
+      "🎯 Veckans affirmation: Min röst och mina åsikter spelar roll.",
+      "🎯 Veckans affirmation: Jag behöver inte passa in i alla mallar för att vara cool.",
+      "🎯 Veckans affirmation: Jag är stolt över den jag håller på att bli.",
+      // Skola och prestation
+      "🎯 Veckans affirmation: Misstag är bara ett sätt att lära sig på.",
+      "🎯 Veckans affirmation: Jag gör mitt bästa, och det är mer än tillräckligt.",
+      "🎯 Veckans affirmation: Jag har förmågan att klara av svåra utmaningar.",
+      "🎯 Veckans affirmation: Min framgång mäts i min egen utveckling, inte i jämförelse med andra.",
+      // Relationer och vänner
+      "🎯 Veckans affirmation: Jag förtjänar vänner som respekterar och stöttar mig.",
+      "🎯 Veckans affirmation: Jag vågar säga nej när något inte känns rätt.",
+      "🎯 Veckans affirmation: Jag sprider positiv energi till människorna runt omkring mig.",
+      "🎯 Veckans affirmation: Det är ett tecken på styrka att be om hjälp när jag behöver det.",
+      // Känslor och mental styrka
+      "🎯 Veckans affirmation: Alla mina känslor är tillåtna och okej att känna.",
+      "🎯 Veckans affirmation: Jag har kontroll över hur jag reagerar på svåra situationer.",
+      "🎯 Veckans affirmation: Jag är stark nog att hantera motgångar.",
+      "🎯 Veckans affirmation: Idag väljer jag att fokusera på det jag kan påverka."
     ]
   },
   {

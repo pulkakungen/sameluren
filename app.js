@@ -417,136 +417,16 @@ function applyStatDecay() {
 }
 
 /* ---------------------------------------------------------
-   Djuren ritas som SVG i koden
-   Byts ut mot riktiga SVG-filer när de kommer.
+   Djuren: riktiga illustrationer i art/crow/ och art/bear/
+   Humöret väljer pose, och nya vilolägen låses upp med nivån.
+   Bygg om art/crow.js och art/bear.js med: node tools/build-art.mjs
    --------------------------------------------------------- */
-const INK = "#101c33";
-
-function eyesMarkup(mood, cx1, cx2, cy) {
-  if (mood === "love") {
-    const heart = (cx) => `
-      <path d="M${cx} ${cy + 6} C${cx - 8} ${cy - 4}, ${cx - 2} ${cy - 12}, ${cx} ${cy - 6}
-               C${cx + 2} ${cy - 12}, ${cx + 8} ${cy - 4}, ${cx} ${cy + 6} Z" fill="#ff8c42"/>`;
-    return heart(cx1) + heart(cx2);
-  }
-  if (mood === "sad") {
-    return `
-      <circle cx="${cx1}" cy="${cy}" r="6.5" fill="${INK}"/>
-      <circle cx="${cx2}" cy="${cy}" r="6.5" fill="${INK}"/>
-      <path d="M${cx1 - 7} ${cy - 11} q7 -5 14 1" stroke="${INK}" stroke-width="2.5" fill="none" stroke-linecap="round"/>
-      <path d="M${cx2 - 7} ${cy - 10} q7 -6 14 -1" stroke="${INK}" stroke-width="2.5" fill="none" stroke-linecap="round"/>
-    `;
-  }
-  // happy / yum: vakna ögon med liten glans
-  return `
-    <circle cx="${cx1}" cy="${cy}" r="8" fill="${INK}"/>
-    <circle cx="${cx2}" cy="${cy}" r="8" fill="${INK}"/>
-    <circle cx="${cx1 - 2.6}" cy="${cy - 2.8}" r="2.4" fill="#fff"/>
-    <circle cx="${cx2 - 2.6}" cy="${cy - 2.8}" r="2.4" fill="#fff"/>
-  `;
-}
-
-function mouthMarkup(mood, cx, cy) {
-  if (mood === "yum") {
-    return `<ellipse cx="${cx}" cy="${cy}" rx="6" ry="7.5" fill="#7a2f1d"/>
-            <ellipse cx="${cx}" cy="${cy + 3}" rx="3.5" ry="2.5" fill="#e08163"/>`;
-  }
-  if (mood === "sad") {
-    return `<path d="M${cx - 9} ${cy + 5} q9 -8 18 0" stroke="${INK}" stroke-width="3" fill="none" stroke-linecap="round"/>`;
-  }
-  return `<path d="M${cx - 10} ${cy - 3} q10 11 20 0" stroke="${INK}" stroke-width="3" fill="none" stroke-linecap="round"/>`;
-}
-
-// Ankarpunkter per djur, så accessoarerna hamnar rätt på både kråka och björn
-// även när djuren byts ut mot riktiga SVG-filer.
-const PET_ANCHORS = {
-  crow: { headCx: 104, headR: 34, headTop: 32, eyeCy: 62, neckY: 126, bodyLeft: 46 },
-  bear: { headCx: 100, headR: 58, headTop: 26, eyeCy: 76, neckY: 142, bodyLeft: 34 }
-};
-
-// Accessoarer låses upp var femte nivå och blir kvar. De två senaste visas
-// samtidigt, så det känns som en växande samling utan att bli rörigt.
-const ACCESSORY_TIERS = [
-  {
-    level: 3,
-    label: "Keps",
-    markup: (a) => `<g transform="translate(${a.headCx},${a.headTop + 4})">
-      <path d="M${-a.headR * 0.85} 4 Q${-a.headR * 0.85} -20 0 -20 Q${a.headR * 0.85} -20 ${a.headR * 0.85} 4 Z" fill="#ff8c42"/>
-      <path d="M${-a.headR * 0.85} 4 Q-4 10 ${a.headR * 0.85} 2 L${a.headR * 0.85 + 3} 8 Q-4 16 ${-a.headR * 0.85 - 2} 10 Z" fill="#e5762f"/>
-      <circle cx="0" cy="-18" r="3.5" fill="#ffd0ad"/>
-    </g>`
-  },
-  {
-    level: 8,
-    label: "Hörlurar",
-    markup: (a) => `<g>
-      <path d="M${a.headCx - a.headR - 2} ${a.eyeCy} Q${a.headCx} ${a.headTop - 26} ${a.headCx + a.headR + 2} ${a.eyeCy}" stroke="#f2f5fa" stroke-width="6" fill="none" stroke-linecap="round"/>
-      <rect x="${a.headCx - a.headR - 12}" y="${a.eyeCy - 8}" width="19" height="28" rx="8" fill="#ff8c42"/>
-      <rect x="${a.headCx + a.headR - 7}" y="${a.eyeCy - 8}" width="19" height="28" rx="8" fill="#ff8c42"/>
-    </g>`
-  },
-  {
-    level: 13,
-    label: "Solglasögon",
-    markup: (a) => `<g transform="translate(${a.headCx},${a.eyeCy})">
-      <rect x="-36" y="-10" width="31" height="20" rx="7" fill="#16233d"/>
-      <rect x="5" y="-10" width="31" height="20" rx="7" fill="#16233d"/>
-      <path d="M-5 -3 Q0 -8 5 -3" stroke="#16233d" stroke-width="4" fill="none"/>
-      <rect x="-32" y="-7" width="8" height="4" rx="2" fill="#fff" opacity="0.35"/>
-      <rect x="9" y="-7" width="8" height="4" rx="2" fill="#fff" opacity="0.35"/>
-    </g>`
-  },
-  {
-    level: 18,
-    label: "Halsduk",
-    markup: (a) => `<g transform="translate(${a.headCx},${a.neckY})">
-      <path d="M-30 -4 Q0 10 30 -4 Q30 8 0 18 Q-30 8 -30 -4 Z" fill="#ff8c42"/>
-      <path d="M16 7 L27 29 L16 31 L9 12 Z" fill="#e5762f"/>
-    </g>`
-  },
-  {
-    level: 23,
-    label: "Ryggsäck",
-    markup: (a) => `<g transform="translate(${a.bodyLeft},${a.neckY - 14})">
-      <rect x="-13" y="-15" width="26" height="34" rx="9" fill="#2c4270"/>
-      <rect x="-13" y="-2" width="26" height="8" rx="3" fill="#ff8c42"/>
-      <path d="M-6 -15 Q0 -26 6 -15" stroke="#2c4270" stroke-width="4" fill="none"/>
-    </g>`
-  },
-  {
-    level: 28,
-    label: "Medalj",
-    markup: (a) => `<g transform="translate(${a.headCx},${a.neckY - 8})">
-      <path d="M-10 -16 L-3 4 M10 -16 L3 4" stroke="#2c4270" stroke-width="4" stroke-linecap="round"/>
-      <circle cx="0" cy="12" r="10" fill="#f3b23f" stroke="#c98c24" stroke-width="2"/>
-      <path d="M0 6 l2 4.2 4.6 0.6 -3.3 3.2 0.8 4.6 -4.1 -2.2 -4.1 2.2 0.8 -4.6 -3.3 -3.2 4.6 -0.6 Z" fill="#fff3d6"/>
-    </g>`
-  }
-];
-
-function accessoryMarkup(type, level) {
-  const anchors = PET_ANCHORS[type] || PET_ANCHORS.crow;
-  const earned = ACCESSORY_TIERS.filter((t) => level >= t.level);
-  return earned.slice(-2).map((t) => t.markup(anchors)).join("");
-}
-
-function petSizeScale(level) {
-  if (level >= 30) return 1.45;
-  if (level >= 20) return 1.3;
-  if (level >= 10) return 1.15;
-  return 1;
-}
-
-// Kråkan ritas av riktiga SVG-poser i art/crow/ (byggda till art/crow.js).
-// Humöret väljer pose, och nya vilolägen låses upp med nivån, så samlingen
-// växer på samma sätt som björnens accessoarer.
 const CROW_MOOD_POSES = {
   love: "stjarnogon",
   yum: "hackar",
   sad: "skriker"
 };
 
-// Nivå och pose. Översta upplåsta nivån gäller som viloläge.
 const CROW_IDLE_TIERS = [
   { level: 1, pose: "sitter", label: "Sitter med sitt mynt" },
   { level: 5, pose: "nyckel", label: "Nyckeln och ringen" },
@@ -557,41 +437,52 @@ const CROW_IDLE_TIERS = [
   { level: 30, pose: "kniv", label: "Kniven" }
 ];
 
-function crowIdlePose(level) {
-  const unlocked = CROW_IDLE_TIERS.filter((t) => level >= t.level);
-  return unlocked.length ? unlocked[unlocked.length - 1].pose : "sitter";
+const BEAR_MOOD_POSES = {
+  love: "hjarta",
+  yum: "nudlar",
+  sad: "sur"
+};
+
+const BEAR_IDLE_TIERS = [
+  { level: 1, pose: "nappflaska", label: "Nappflaskan" },
+  { level: 5, pose: "glass", label: "Glassen" },
+  { level: 10, pose: "morotsdrakt", label: "Morotsdräkten" },
+  { level: 15, pose: "simglasogon", label: "Simglasögonen" },
+  { level: 20, pose: "akustisk", label: "Akustiska gitarren" },
+  { level: 25, pose: "elgitarr", label: "Elgitarren" },
+  { level: 30, pose: "solglasogon", label: "Solglasögonen" }
+];
+
+const PET_ART = { crow: typeof CROW_ART === "object" ? CROW_ART : {}, bear: typeof BEAR_ART === "object" ? BEAR_ART : {} };
+const PET_MOOD_POSES = { crow: CROW_MOOD_POSES, bear: BEAR_MOOD_POSES };
+const PET_IDLE_TIERS = { crow: CROW_IDLE_TIERS, bear: BEAR_IDLE_TIERS };
+
+function idleTiersFor(type) {
+  return PET_IDLE_TIERS[type] || CROW_IDLE_TIERS;
 }
 
-function renderCrowSVG(mood, level) {
-  const pose = CROW_MOOD_POSES[mood] || crowIdlePose(level);
-  return CROW_ART[pose] || CROW_ART.sitter || "";
+function idlePose(type, level) {
+  const unlocked = idleTiersFor(type).filter((t) => level >= t.level);
+  return unlocked.length ? unlocked[unlocked.length - 1] : idleTiersFor(type)[0];
 }
 
-function renderBearSVG(mood, level) {
-  return `
-  <svg viewBox="0 0 200 180" xmlns="http://www.w3.org/2000/svg">
-    <ellipse cx="100" cy="166" rx="50" ry="7" fill="#000" opacity="0.2"/>
-    <circle cx="56" cy="42" r="20" fill="#8a5a33"/>
-    <circle cx="144" cy="42" r="20" fill="#8a5a33"/>
-    <circle cx="56" cy="42" r="10" fill="#c89163"/>
-    <circle cx="144" cy="42" r="10" fill="#c89163"/>
-    <ellipse cx="100" cy="94" rx="58" ry="56" fill="#8a5a33"/>
-    <ellipse cx="100" cy="114" rx="31" ry="23" fill="#d8ab7c"/>
-    <ellipse cx="100" cy="102" rx="9" ry="6.5" fill="${INK}"/>
-    ${eyesMarkup(mood, 80, 120, 76)}
-    ${mouthMarkup(mood, 100, 120)}
-    ${accessoryMarkup("bear", level)}
-  </svg>`;
+function petSizeScale(level) {
+  if (level >= 30) return 1.45;
+  if (level >= 20) return 1.3;
+  if (level >= 10) return 1.15;
+  return 1;
 }
 
 function petSVG(type, mood, level) {
-  return type === "bear" ? renderBearSVG(mood, level) : renderCrowSVG(mood, level);
+  const art = PET_ART[type] || PET_ART.crow;
+  const moodPose = (PET_MOOD_POSES[type] || CROW_MOOD_POSES)[mood];
+  const pose = moodPose || idlePose(type, level).pose;
+  return art[pose] || art[idleTiersFor(type)[0].pose] || "";
 }
 
-// Kråkan låser upp nya poser, björnen nya accessoarer. Samma känsla, olika grepp.
+// Båda djuren låser upp nya poser, bara motiven skiljer.
 function newUnlockBetween(levelBefore, levelNow) {
-  const tiers = state.petType === "crow" ? CROW_IDLE_TIERS : ACCESSORY_TIERS;
-  return tiers.find((t) => t.level > levelBefore && t.level <= levelNow) || null;
+  return idleTiersFor(state.petType).find((t) => t.level > levelBefore && t.level <= levelNow) || null;
 }
 
 let currentMood = "happy";

@@ -347,6 +347,9 @@ button {
   display: inline-block;
   transition: transform 0.5s cubic-bezier(.34,1.56,.64,1);
 }
+/* [hidden] räcker inte när elementet har display: flex, så platsen för ungen
+   syntes som ett löst streck bredvid djuret innan den fötts. */
+.baby-avatar-wrap[hidden] { display: none; }
 .baby-avatar-wrap {
   display: flex;
   flex-direction: column;
