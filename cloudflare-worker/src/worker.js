@@ -31,6 +31,8 @@ const REPORT_COLUMNS = [
   { id: "mellanmal", label: "Mellanmål" },
   { id: "matsopor", label: "Matsopor" },
   { id: "plastsopor", label: "Plastsopor" },
+  { id: "metallglas", label: "Metall- och glassopor" },
+  { id: "papperkartong", label: "Papper och kartong" },
   { id: "restavfall", label: "Restavfall" },
   { id: "tvatten", label: "Gå ner med tvätten" },
   { id: "snygga-rum", label: "Plocka undan rummet" },
