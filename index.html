@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1" />
+<title>Sameluren</title>
+<meta name="theme-color" content="#101c33" />
+<link rel="manifest" href="manifest.json" />
+<link rel="icon" href="icons/icon-192.png" />
+<link rel="apple-touch-icon" href="icons/icon-192.png" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+<div id="glow-bg" aria-hidden="true"></div>
+
+<!-- ================= STARTSKÄRM ================= -->
+<section id="screen-start" class="screen active">
+  <div class="card start-card">
+    <h1 class="app-title">Sameluren</h1>
+    <p class="subtitle">Välj din följeslagare. Den lever på att du faktiskt gör grejerna.</p>
+
+    <div class="pet-picker">
+      <button class="pet-choice" data-pet="crow">
+        <div class="pet-avatar-preview" data-preview="crow"></div>
+        <span>Kråka</span>
+      </button>
+      <button class="pet-choice" data-pet="bear">
+        <div class="pet-avatar-preview" data-preview="bear"></div>
+        <span>Björn</span>
+      </button>
+    </div>
+
+    <input id="pet-name-input" class="name-input" type="text" maxlength="16" placeholder="Ge den ett namn" />
+
+    <button id="start-btn" class="btn-primary" disabled>Kör igång</button>
+  </div>
+</section>
+
+<!-- ================= APPEN ================= -->
+<section id="screen-app" class="screen">
+
+  <header class="topbar">
+    <div class="pet-mini">
+      <div id="pet-avatar" class="pet-avatar"></div>
+      <div class="pet-info">
+        <div class="pet-name-row">
+          <span id="pet-name-display" class="pet-name"></span>
+          <span id="pet-level" class="pet-level">Lvl 1</span>
+        </div>
+        <div class="stat-bar">
+          <span class="stat-icon">⚡</span>
+          <div class="bar"><div id="xp-fill" class="bar-fill xp"></div></div>
+        </div>
+        <div class="stat-bar">
+          <span id="food-icon" class="stat-icon">🍽️</span>
+          <div class="bar"><div id="hunger-fill" class="bar-fill hunger"></div></div>
+        </div>
+        <div class="stat-bar">
+          <span class="stat-icon">🧡</span>
+          <div class="bar"><div id="happiness-fill" class="bar-fill happiness"></div></div>
+        </div>
+      </div>
+    </div>
+    <div class="topbar-right">
+      <div id="demo-badge" class="demo-badge" hidden>DEMO</div>
+      <div class="streak-chip">🔥 <span id="streak-count">0</span></div>
+      <button id="notif-btn" class="icon-btn" title="Slå på påminnelser">🔔</button>
+      <button id="reset-btn" class="icon-btn" title="Börja om (rensar allt)">⚙️</button>
+    </div>
+  </header>
+
+  <div class="pet-stage">
+    <div class="pet-avatar-row">
+      <div id="pet-size-wrap" class="pet-size-wrap">
+        <div id="pet-avatar-big" class="pet-avatar-big"></div>
+      </div>
+      <div id="baby-avatar-wrap" class="baby-avatar-wrap" hidden>
+        <div id="baby-avatar" class="baby-avatar"></div>
+        <span id="baby-name-tag" class="baby-name-tag"></span>
+      </div>
+    </div>
+    <div id="pet-bubble" class="pet-speech-bubble">Tja. Ska vi ta dagen?</div>
+    <div class="feed-buttons">
+      <button id="feed-btn" class="feed-btn">
+        <span id="feed-btn-label">🍽️ Ge mat</span> <span id="food-count" class="count-badge">0</span>
+      </button>
+      <button id="love-btn" class="feed-btn love">
+        🧡 Ge kärlek <span id="love-count" class="count-badge">0</span>
+      </button>
+    </div>
+  </div>
+
+  <main id="task-sections" class="task-sections"></main>
+
+  <div class="daily-progress">
+    <div class="daily-progress-label">
+      <span>Dagens uppgifter (<span id="daily-progress-weekday"></span>)</span>
+      <span id="daily-progress-text">0 / 0</span>
+    </div>
+    <div class="bar big"><div id="daily-progress-fill" class="bar-fill daily"></div></div>
+  </div>
+
+</section>
+
+<!-- toast och konfetti -->
+<div id="toast-layer"></div>
+<div id="confetti-layer"></div>
+
+<!-- ungen-valet -->
+<div id="baby-choice-modal" class="modal-overlay" hidden>
+  <div class="modal-card">
+    <div class="modal-emoji">🐾</div>
+    <h2 class="modal-title">Ungen är redo för nästa steg</h2>
+    <p id="baby-choice-text" class="modal-text"></p>
+    <div class="modal-buttons">
+      <button id="baby-restart-btn" class="btn-primary">Börja om med ungen</button>
+      <button id="baby-moveout-btn" class="btn-secondary">Låt ungen flytta ut</button>
+    </div>
+  </div>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
