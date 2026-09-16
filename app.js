@@ -537,32 +537,34 @@ function petSizeScale(level) {
   return 1;
 }
 
-// Kråkan: näbben öppnas när den äter, så den slipper en ritad mun.
-function crowBeak(mood) {
-  if (mood === "yum") {
-    return `
-      <path d="M137 58 L170 52 L138 66 Z" fill="#ff8c42"/>
-      <path d="M137 70 L170 80 L138 74 Z" fill="#e5762f"/>`;
-  }
-  return `
-    <path d="M136 56 L171 66 L136 76 Z" fill="#ff8c42"/>
-    <path d="M136 67 L171 66 L136 72 Z" fill="#e5762f"/>`;
+// Kråkan ritas av riktiga SVG-poser i art/crow/ (byggda till art/crow.js).
+// Humöret väljer pose, och nya vilolägen låses upp med nivån, så samlingen
+// växer på samma sätt som björnens accessoarer.
+const CROW_MOOD_POSES = {
+  love: "stjarnogon",
+  yum: "hackar",
+  sad: "skriker"
+};
+
+// Nivå och pose. Översta upplåsta nivån gäller som viloläge.
+const CROW_IDLE_TIERS = [
+  { level: 1, pose: "sitter", label: "Sitter med sitt mynt" },
+  { level: 5, pose: "nyckel", label: "Nyckeln och ringen" },
+  { level: 10, pose: "kaffe", label: "Kaffekoppen" },
+  { level: 15, pose: "laser-bok", label: "Läser boken" },
+  { level: 20, pose: "nojd", label: "Nöjd och mätt" },
+  { level: 25, pose: "halsband", label: "Halsbandet" },
+  { level: 30, pose: "kniv", label: "Kniven" }
+];
+
+function crowIdlePose(level) {
+  const unlocked = CROW_IDLE_TIERS.filter((t) => level >= t.level);
+  return unlocked.length ? unlocked[unlocked.length - 1].pose : "sitter";
 }
 
 function renderCrowSVG(mood, level) {
-  return `
-  <svg viewBox="0 0 200 180" xmlns="http://www.w3.org/2000/svg">
-    <ellipse cx="100" cy="168" rx="46" ry="7" fill="#000" opacity="0.2"/>
-    <path d="M62 126 Q26 140 10 166 Q44 160 70 142 Z" fill="#222f47"/>
-    <ellipse cx="100" cy="118" rx="44" ry="42" fill="#2c3b58"/>
-    <path d="M78 96 Q118 96 126 130 Q112 156 84 146 Q66 128 78 96 Z" fill="#243350"/>
-    <circle cx="104" cy="66" r="34" fill="#2c3b58"/>
-    <path d="M74 40 Q88 28 100 36 Q86 40 78 48 Z" fill="#243350"/>
-    ${crowBeak(mood)}
-    ${eyesMarkup(mood, 92, 118, 62)}
-    <path d="M88 152 L84 168 M112 152 L116 168" stroke="#8a97ad" stroke-width="4" stroke-linecap="round"/>
-    ${accessoryMarkup("crow", level)}
-  </svg>`;
+  const pose = CROW_MOOD_POSES[mood] || crowIdlePose(level);
+  return CROW_ART[pose] || CROW_ART.sitter || "";
 }
 
 function renderBearSVG(mood, level) {
@@ -584,6 +586,12 @@ function renderBearSVG(mood, level) {
 
 function petSVG(type, mood, level) {
   return type === "bear" ? renderBearSVG(mood, level) : renderCrowSVG(mood, level);
+}
+
+// Kråkan låser upp nya poser, björnen nya accessoarer. Samma känsla, olika grepp.
+function newUnlockBetween(levelBefore, levelNow) {
+  const tiers = state.petType === "crow" ? CROW_IDLE_TIERS : ACCESSORY_TIERS;
+  return tiers.find((t) => t.level > levelBefore && t.level <= levelNow) || null;
 }
 
 let currentMood = "happy";
@@ -830,12 +838,12 @@ function completeTask(taskId, sectionId) {
         burstConfetti(30);
       }, 350);
 
-      const newAccessory = ACCESSORY_TIERS.find((t) => t.level > levelBefore && t.level <= state.level);
+      const newUnlock = newUnlockBetween(levelBefore, state.level);
       const newSizeTier = [10, 20, 30].find((l) => l > levelBefore && l <= state.level);
       let extraDelay = 900;
-      if (newAccessory) {
+      if (newUnlock) {
         setTimeout(() => {
-          showToast(`Upplåst: ${newAccessory.label}`, true);
+          showToast(`Upplåst: ${newUnlock.label}`, true);
           burstConfetti(24);
         }, extraDelay);
         extraDelay += 550;
