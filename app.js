@@ -115,7 +115,7 @@ const TASK_SECTIONS = [
     emoji: "🍳",
     title: "Frukost",
     tasks: [
-      { id: "at-frukost", emoji: "🥣", text: "Ät frukost" },
+      { id: "at-frukost", emoji: "🥣", text: "Ät frukost", days: [DAG_LOR, DAG_SON] },
       { id: "drick-vatten", emoji: "💧", text: "Drick vatten" },
       { id: "tander-morgon", emoji: "🪥", text: "Borsta tänderna" },
       { id: "matsack", emoji: "🍎", text: "Ta med mellanmål" }
