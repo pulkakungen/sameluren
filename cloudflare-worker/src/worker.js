@@ -19,6 +19,7 @@ const REPORT_COLUMNS = [
   { id: "badda", label: "Bädda sängen" },
   { id: "tvatta-ansikte", label: "Tvätta ansiktet" },
   { id: "deo", label: "Deo och hår" },
+  { id: "raka", label: "Raka dig" },
   { id: "affirmation-rutin", label: "Läs veckans affirmation" },
   { id: "at-frukost", label: "Ät frukost" },
   { id: "drick-vatten", label: "Drick vatten" },

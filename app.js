@@ -106,6 +106,7 @@ const TASK_SECTIONS = [
       { id: "badda", emoji: "🛏️", text: "Bädda sängen" },
       { id: "tvatta-ansikte", emoji: "💦", text: "Tvätta ansiktet" },
       { id: "deo", emoji: "🧴", text: "Deo och hår" },
+      { id: "raka", emoji: "🪒", text: "Raka dig", days: [DAG_TORS, DAG_SON] },
       { id: "affirmation-rutin", emoji: "🎯", text: "Läs veckans affirmation" }
     ]
   },
