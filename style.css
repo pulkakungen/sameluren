@@ -300,6 +300,15 @@ button {
   padding: 5px 10px;
   border-radius: 999px;
 }
+.away-badge {
+  background: rgba(110, 168, 232, 0.16);
+  color: #9cc4f0;
+  font-weight: 600;
+  font-size: 0.72rem;
+  padding: 5px 10px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
 .streak-chip {
   background: var(--navy-700);
   font-weight: 700;

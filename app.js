@@ -95,6 +95,30 @@ function syncStateToWorker() {
 // parity: "even"/"odd" ger uppgifter som återkommer varannan dag.
 const DAG_MAN = 1, DAG_TIS = 2, DAG_ONS = 3, DAG_TORS = 4, DAG_FRE = 5, DAG_LOR = 6, DAG_SON = 0;
 
+// Samuel bor här jämna veckor från onsdagen, och åker till sin mamma på
+// onsdagar ojämna veckor. Båda onsdagarna räknas som hemma, eftersom han är
+// här antingen på morgonen eller på kvällen den dagen.
+const HOME_EVEN_WEEK_DAYS = [DAG_ONS, DAG_TORS, DAG_FRE, DAG_LOR, DAG_SON];
+const HOME_ODD_WEEK_DAYS = [DAG_MAN, DAG_TIS, DAG_ONS];
+
+// ISO-veckonummer, alltså veckor som börjar på måndag, samma som kalendern visar.
+function isoWeekNumber(date) {
+  const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+  const dayNum = d.getUTCDay() || 7;
+  d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+  return Math.ceil(((d - yearStart) / 86400000 + 1) / 7);
+}
+
+function isHomeOnDate(date) {
+  const days = isoWeekNumber(date) % 2 === 0 ? HOME_EVEN_WEEK_DAYS : HOME_ODD_WEEK_DAYS;
+  return days.includes(date.getDay());
+}
+
+function isHomeToday() {
+  return isHomeOnDate(new Date());
+}
+
 const TASK_SECTIONS = [
   {
     id: "morgon",
@@ -137,15 +161,15 @@ const TASK_SECTIONS = [
     title: "Hemma efter skolan",
     tasks: [
       { id: "mellanmal", emoji: "🥪", text: "Ät ett mellanmål" },
-      { id: "matsopor", emoji: "🍂", text: "Gå ut med matsopor", days: [DAG_MAN, DAG_ONS, DAG_FRE] },
-      { id: "plastsopor", emoji: "♻️", text: "Gå ut med plastsopor", days: [DAG_TIS, DAG_TORS] },
-      { id: "metallglas", emoji: "🍾", text: "Gå ut med metall- och glassopor", days: [DAG_SON] },
-      { id: "papperkartong", emoji: "📦", text: "Gå ut med papper och kartong", days: [DAG_SON] },
-      { id: "restavfall", emoji: "🗑️", text: "Gå ut med restavfall", days: [DAG_SON] },
-      { id: "tvatten", emoji: "🧺", text: "Gå ner med tvätten", days: [DAG_MAN, DAG_TORS] },
-      { id: "snygga-rum", emoji: "🧹", text: "Plocka undan rummet" },
-      { id: "dammsuga", emoji: "🌀", text: "Dammsuga", days: [DAG_LOR] },
-      { id: "diskmaskin", emoji: "🍽️", text: "Töm eller fyll diskmaskinen" }
+      { id: "matsopor", emoji: "🍂", text: "Gå ut med matsopor", days: [DAG_MAN, DAG_ONS, DAG_FRE], home: true },
+      { id: "plastsopor", emoji: "♻️", text: "Gå ut med plastsopor", days: [DAG_TIS, DAG_TORS], home: true },
+      { id: "metallglas", emoji: "🍾", text: "Gå ut med metall- och glassopor", days: [DAG_SON], home: true },
+      { id: "papperkartong", emoji: "📦", text: "Gå ut med papper och kartong", days: [DAG_SON], home: true },
+      { id: "restavfall", emoji: "🗑️", text: "Gå ut med restavfall", days: [DAG_SON], home: true },
+      { id: "tvatten", emoji: "🧺", text: "Gå ner med tvätten", days: [DAG_MAN, DAG_TORS], home: true },
+      { id: "snygga-rum", emoji: "🧹", text: "Plocka undan rummet", home: true },
+      { id: "dammsuga", emoji: "🌀", text: "Dammsuga", days: [DAG_LOR], home: true },
+      { id: "diskmaskin", emoji: "🍽️", text: "Töm eller fyll diskmaskinen", home: true }
     ]
   },
   {
@@ -193,6 +217,7 @@ function dayOfYear(date) {
 
 function isTaskActiveOnDate(task, date) {
   if (task.days && !task.days.includes(date.getDay())) return false;
+  if (task.home && !isHomeOnDate(date)) return false; // hussysslor bara de dagar han är här
   if (task.parity) {
     const isEven = dayOfYear(date) % 2 === 0;
     if (task.parity === "even" && !isEven) return false;
@@ -591,7 +616,7 @@ function updateStatsUI() {
   const doneCount = Object.keys(state.completedToday).length;
   const totalToday = totalTasksToday();
   document.getElementById("daily-progress-text").textContent = `${doneCount} / ${totalToday}`;
-  document.getElementById("daily-progress-fill").style.width = clamp((doneCount / totalToday) * 100, 0, 100) + "%";
+  document.getElementById("daily-progress-fill").style.width = clamp((doneCount / Math.max(1, totalToday)) * 100, 0, 100) + "%";
   document.getElementById("daily-progress-weekday").textContent = WEEKDAY_NAMES[new Date().getDay()];
 
   if (state.hunger <= 25) setBubble(pick(LOW_HUNGER_BUBBLE));
@@ -644,6 +669,7 @@ function renderAll() {
   renderBabyAvatar();
   setBubble(greetingForNow());
   document.getElementById("demo-badge").hidden = !DEMO_MODE;
+  document.getElementById("away-badge").hidden = isHomeToday();
 }
 
 /* ---------------------------------------------------------
