@@ -119,6 +119,10 @@ function isHomeToday() {
   return isHomeOnDate(new Date());
 }
 
+function isEvenWeek(date) {
+  return isoWeekNumber(date) % 2 === 0;
+}
+
 const TASK_SECTIONS = [
   {
     id: "morgon",
@@ -161,8 +165,14 @@ const TASK_SECTIONS = [
     title: "Hemma efter skolan",
     tasks: [
       { id: "mellanmal", emoji: "🥪", text: "Ät ett mellanmål" },
-      { id: "matsopor", emoji: "🍂", text: "Gå ut med matsopor", days: [DAG_MAN, DAG_ONS, DAG_FRE], home: true },
-      { id: "plastsopor", emoji: "♻️", text: "Gå ut med plastsopor", days: [DAG_TIS, DAG_TORS], home: true },
+      // Sopvändorna varvas med Sassa så båda gör båda sorterna. Hans turer:
+      // matsopor onsdag och lördag jämn vecka samt måndag ojämn, plast torsdag
+      // jämn vecka och tisdag ojämn. Resten av dagarna är hennes.
+      { id: "matsopor-ons", emoji: "🍂", text: "Gå ut med matsopor", days: [DAG_ONS], weeks: "even", home: true },
+      { id: "matsopor-lor", emoji: "🍂", text: "Gå ut med matsopor", days: [DAG_LOR], weeks: "even", home: true },
+      { id: "matsopor-man", emoji: "🍂", text: "Gå ut med matsopor", days: [DAG_MAN], weeks: "odd", home: true },
+      { id: "plastsopor-tors", emoji: "♻️", text: "Gå ut med plastsopor", days: [DAG_TORS], weeks: "even", home: true },
+      { id: "plastsopor-tis", emoji: "♻️", text: "Gå ut med plastsopor", days: [DAG_TIS], weeks: "odd", home: true },
       { id: "metallglas", emoji: "🍾", text: "Gå ut med metall- och glassopor", days: [DAG_SON], home: true },
       { id: "papperkartong", emoji: "📦", text: "Gå ut med papper och kartong", days: [DAG_SON], home: true },
       { id: "restavfall", emoji: "🗑️", text: "Gå ut med restavfall", days: [DAG_SON], home: true },
@@ -218,6 +228,8 @@ function dayOfYear(date) {
 function isTaskActiveOnDate(task, date) {
   if (task.days && !task.days.includes(date.getDay())) return false;
   if (task.home && !isHomeOnDate(date)) return false; // hussysslor bara de dagar han är här
+  if (task.weeks === "even" && !isEvenWeek(date)) return false;
+  if (task.weeks === "odd" && isEvenWeek(date)) return false;
   if (task.parity) {
     const isEven = dayOfYear(date) % 2 === 0;
     if (task.parity === "even" && !isEven) return false;
