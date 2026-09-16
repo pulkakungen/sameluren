@@ -15,7 +15,7 @@ const STORAGE_KEY = DEMO_MODE ? "sameluren_demo_state_v1" : "sameluren_state_v1"
    Push-notiser (egen Cloudflare Worker, skild från Sassas)
    --------------------------------------------------------- */
 const PUSH_WORKER_URL = "https://sameluren-push.bella-sassibrass.workers.dev";
-const VAPID_PUBLIC_KEY = "ERSÄTT_MED_EGEN_VAPID_PUBLIC_KEY";
+const VAPID_PUBLIC_KEY = "BC5CbjndxxxogxMSeZ8lnQ7J2JRNjtbjczvS3e2iTzX0cvfWUOIFH1ftWbSJSlsMidWr-vbc9fmnAdEa7Z1AwGI";
 
 function urlBase64ToUint8Array(base64String) {
   const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
