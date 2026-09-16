@@ -65,6 +65,8 @@ tystnad under lektionstid så djuret inte tjatar när mobilen ändå är inlåst
 
 ## Så här sätter du igång push
 
+Detaljerad guide steg för steg finns i [SETUP-PUSH.md](SETUP-PUSH.md). Kortversionen:
+
 1. Skapa VAPID-nycklar: `npx web-push generate-vapid-keys`
 2. Lägg den publika nyckeln i `VAPID_PUBLIC_KEY` i `app.js`
 3. `cd cloudflare-worker && npm install`
