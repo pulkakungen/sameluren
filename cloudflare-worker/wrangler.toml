@@ -5,7 +5,7 @@ compatibility_date = "2026-01-01"
 # Skapas med: npx wrangler kv namespace create PUSH_KV
 # Klistra in det "id" som kommandot skriver ut här:
 kv_namespaces = [
-  { binding = "PUSH_KV", id = "ERSATT_MED_EGET_KV_ID" }
+  { binding = "PUSH_KV", id = "20398c84443e45958962d3bde1505a40" }
 ]
 
 # Kör var 15:e minut, dygnet runt (worker-koden filtrerar själv på svensk lokaltid)
