@@ -83,7 +83,15 @@ function syncStateToWorker() {
   fetch(PUSH_WORKER_URL + "/sync", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ allDoneToday, tasks, hunger: state.hunger, happiness: state.happiness })
+    body: JSON.stringify({
+      allDoneToday,
+      tasks,
+      hunger: state.hunger,
+      happiness: state.happiness,
+      level: state.level,
+      streak: state.streak,
+      petName: state.petName
+    })
   }).catch(() => {});
 }
 

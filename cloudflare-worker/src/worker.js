@@ -3,7 +3,7 @@ import { buildPushPayload } from "@block65/webcrypto-web-push";
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type"
+  "Access-Control-Allow-Headers": "Content-Type, X-Admin-Key"
 };
 
 const SUBSCRIPTION_KEY = "subscription";
@@ -191,6 +191,76 @@ async function getWeeklyAffirmation(env, now) {
   const text = pick(affirmationReminder.messages);
   await env.PUSH_KV.put(CURRENT_AFFIRMATION_KEY, JSON.stringify({ weekKey, text }));
   return text;
+}
+
+// Allt under /admin och rapporten kräver nyckeln som sätts med
+// `wrangler secret put ADMIN_TOKEN`. Barnens egna anrop (/subscribe, /sync)
+// är fortsatt öppna, de har ingen hemlighet att bära på.
+function adminKeyOk(request, url, env) {
+  if (!env.ADMIN_TOKEN) return true; // ingen nyckel satt än, lås inte ute någon
+  const given = request.headers.get("X-Admin-Key") || url.searchParams.get("key") || "";
+  return given === env.ADMIN_TOKEN;
+}
+
+function denied() {
+  return new Response("Fel eller saknad nyckel. Lägg till ?key=... i adressen.", {
+    status: 401,
+    headers: { ...CORS_HEADERS, "Content-Type": "text/plain; charset=utf-8" }
+  });
+}
+
+// Normaliserad lägesbild för föräldrapanelen. Samma form i alla appar, så
+// panelen slipper veta hur varje enskild app är byggd inuti.
+async function buildSummary(env) {
+  const now = new Date();
+  const { dateStr } = stockholmParts(now);
+  const subRaw = await env.PUSH_KV.get(SUBSCRIPTION_KEY);
+  const stateRaw = await env.PUSH_KV.get(STATE_KEY);
+  const state = stateRaw ? JSON.parse(stateRaw) : null;
+  const todayRaw = await env.PUSH_KV.get(HISTORY_PREFIX + dateStr);
+  const today = todayRaw ? JSON.parse(todayRaw) : null;
+  const sentRaw = await env.PUSH_KV.get(`reminders:${dateStr}`);
+
+  const tasks = today && Array.isArray(today.tasks) ? today.tasks : [];
+
+  // fjorton dagar bakåt, för en liten kurva i panelen
+  const history = [];
+  for (let i = 13; i >= 0; i--) {
+    const d = new Date(now.getTime() - i * 86400000);
+    const key = HISTORY_PREFIX + stockholmParts(d).dateStr;
+    const raw = await env.PUSH_KV.get(key);
+    const rec = raw ? JSON.parse(raw) : null;
+    const recTasks = rec && Array.isArray(rec.tasks) ? rec.tasks : [];
+    history.push({
+      date: stockholmParts(d).dateStr,
+      done: recTasks.filter((t) => t.done).length,
+      total: recTasks.length,
+      allDone: !!(rec && rec.allDoneToday)
+    });
+  }
+
+  return {
+    app: "sameluren",
+    title: "Sameluren",
+    child: "Samuel",
+    now: now.toISOString(),
+    dateStr,
+    notifications: !!subRaw,
+    lastSyncAt: state ? state.lastSyncAt : null,
+    lastNagAt: state ? state.lastNagAt : null,
+    allDoneToday: !!(state && state.allDoneToday),
+    hunger: state && typeof state.hunger === "number" ? state.hunger : null,
+    happiness: state && typeof state.happiness === "number" ? state.happiness : null,
+    level: state && typeof state.level === "number" ? state.level : null,
+    streak: state && typeof state.streak === "number" ? state.streak : null,
+    petName: state && state.petName ? state.petName : null,
+    doneToday: tasks.filter((t) => t.done).length,
+    totalToday: tasks.length,
+    tasks,
+    remindersSentToday: sentRaw ? JSON.parse(sentRaw) : [],
+    affirmation: today && today.affirmationSent ? today.affirmationSent : null,
+    history
+  };
 }
 
 function json(data, status = 200) {
@@ -401,6 +471,9 @@ export default {
         allDoneToday: !!body.allDoneToday,
         hunger: typeof body.hunger === "number" ? body.hunger : 80,
         happiness: typeof body.happiness === "number" ? body.happiness : 80,
+        level: typeof body.level === "number" ? body.level : null,
+        streak: typeof body.streak === "number" ? body.streak : null,
+        petName: typeof body.petName === "string" ? body.petName : null,
         lastNagAt: null
       };
       // behåll lastNagAt om det redan finns, så spärren inte nollas vid varje synk
@@ -420,8 +493,28 @@ export default {
       return json({ ok: true });
     }
 
+    if (url.pathname.startsWith("/admin") || url.pathname === "/report") {
+      if (!adminKeyOk(request, url, env)) return denied();
+    }
+
     if (url.pathname === "/report" && request.method === "GET") {
       return buildReportCsv(env);
+    }
+
+    if (url.pathname === "/admin/summary" && request.method === "GET") {
+      return json(await buildSummary(env));
+    }
+
+    // Fritt meddelande från föräldrapanelen.
+    if (url.pathname === "/admin/send" && (request.method === "GET" || request.method === "POST")) {
+      let text = url.searchParams.get("text");
+      if (!text && request.method === "POST") {
+        const body = await request.json().catch(() => ({}));
+        text = body.text;
+      }
+      if (!text || !text.trim()) return json({ ok: false, error: "ingen text" }, 400);
+      const ok = await sendPush(env, text.trim());
+      return json({ ok });
     }
 
     if (url.pathname === "/admin/clear-history" && request.method === "GET") {
