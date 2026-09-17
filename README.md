@@ -14,7 +14,7 @@ notiser och en rapport för föräldrar.
 | `app.js` | All logik: uppgifter, nivåer, djuren som SVG, push-anslutning |
 | `sw.js` | Service worker: offlinecache och mottagning av notiser |
 | `manifest.json` | Gör den installerbar på hemskärmen |
-| `icons/` | App-ikoner, platshållare tills riktig grafik finns |
+| `icons/` | App-ikoner, kråkans huvud, byggda av `tools/build-icon.mjs` |
 | `art/crow/`, `art/bear/` | Djurens poser, en SVG per motiv |
 | `art/crow.js`, `art/bear.js` | Genererade, alla poser i en fil som appen laddar |
 | `tools/build-art.mjs` | Bygger js-filerna från SVG-filerna |
