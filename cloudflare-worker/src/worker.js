@@ -137,12 +137,18 @@ const FIXED_REMINDERS = [
   }
 ];
 
-const NAG_MESSAGES = [
+// Två uppsättningar, så texten stämmer med vad som faktiskt är lågt. Innan
+// kunde djuret säga att det var hungrigt fast det var kärleken som saknades.
+const HUNGRY_MESSAGES = [
   "Jag börjar bli hungrig här.",
+  "Magen säger ifrån. Kika in i appen.",
+  "Det vore inte fel med något att äta."
+];
+
+const LONELY_MESSAGES = [
   "Har du glömt bort mig?",
   "Det var ett tag sen du kollade in.",
-  "Sitter här och väntar. Kika in i appen.",
-  "Lite uppmärksamhet hade suttit fint."
+  "Sitter här och väntar. Lite uppmärksamhet hade suttit fint."
 ];
 
 function pick(arr) {
@@ -315,7 +321,9 @@ async function runScheduledChecks(env) {
 
   const isHungryOrLonely = estimatedHunger < NAG_THRESHOLD || estimatedHappiness < NAG_THRESHOLD;
   if (isHungryOrLonely && gapSinceNag > NAG_GAP_MS) {
-    await sendPush(env, pick(NAG_MESSAGES));
+    // den lägsta nivån avgör vad djuret klagar på
+    const hungriest = estimatedHunger <= estimatedHappiness;
+    await sendPush(env, pick(hungriest ? HUNGRY_MESSAGES : LONELY_MESSAGES));
     state.lastNagAt = now.toISOString();
     await env.PUSH_KV.put(STATE_KEY, JSON.stringify(state));
   }

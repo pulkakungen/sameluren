@@ -93,6 +93,8 @@ function syncStateToWorker() {
 // days: valfri lista med veckodagsnummer (0=söndag ... 6=lördag) uppgiften gäller.
 // Ingen "days"-lista = uppgiften gäller varje dag.
 // parity: "even"/"odd" ger uppgifter som återkommer varannan dag.
+// gives: "food" eller "love". Varje uppgift ger det ena, aldrig båda, så lagret
+// fylls långsammare och matning och kärlek förblir något att hushålla med.
 const DAG_MAN = 1, DAG_TIS = 2, DAG_ONS = 3, DAG_TORS = 4, DAG_FRE = 5, DAG_LOR = 6, DAG_SON = 0;
 
 // Samuel bor här jämna veckor från onsdagen, och åker till sin mamma på
@@ -129,13 +131,13 @@ const TASK_SECTIONS = [
     emoji: "🌅",
     title: "Morgon",
     tasks: [
-      { id: "vakna", emoji: "⏰", text: "Upp ur sängen" },
-      { id: "kladd", emoji: "👕", text: "Klä på dig" },
-      { id: "badda", emoji: "🛏️", text: "Bädda sängen" },
-      { id: "tvatta-ansikte", emoji: "💦", text: "Tvätta ansiktet" },
-      { id: "deo", emoji: "🧴", text: "Deo och hår" },
-      { id: "raka", emoji: "🪒", text: "Raka dig", days: [DAG_TORS, DAG_SON] },
-      { id: "affirmation-rutin", emoji: "🎯", text: "Läs veckans affirmation" }
+      { id: "vakna", emoji: "⏰", text: "Upp ur sängen" , gives: "food" },
+      { id: "kladd", emoji: "👕", text: "Klä på dig" , gives: "love" },
+      { id: "badda", emoji: "🛏️", text: "Bädda sängen" , gives: "food" },
+      { id: "tvatta-ansikte", emoji: "💦", text: "Tvätta ansiktet" , gives: "love" },
+      { id: "deo", emoji: "🧴", text: "Deo och hår" , gives: "food" },
+      { id: "raka", emoji: "🪒", text: "Raka dig", days: [DAG_TORS, DAG_SON] , gives: "love" },
+      { id: "affirmation-rutin", emoji: "🎯", text: "Läs veckans affirmation" , gives: "food" }
     ]
   },
   {
@@ -143,10 +145,10 @@ const TASK_SECTIONS = [
     emoji: "🍳",
     title: "Frukost",
     tasks: [
-      { id: "at-frukost", emoji: "🥣", text: "Ät frukost", days: [DAG_LOR, DAG_SON] },
-      { id: "drick-vatten", emoji: "💧", text: "Drick vatten" },
-      { id: "tander-morgon", emoji: "🪥", text: "Borsta tänderna" },
-      { id: "matsack", emoji: "🍎", text: "Ta med mellanmål" }
+      { id: "at-frukost", emoji: "🥣", text: "Ät frukost", days: [DAG_LOR, DAG_SON] , gives: "love" },
+      { id: "drick-vatten", emoji: "💧", text: "Drick vatten" , gives: "food" },
+      { id: "tander-morgon", emoji: "🪥", text: "Borsta tänderna" , gives: "love" },
+      { id: "matsack", emoji: "🍎", text: "Ta med mellanmål" , gives: "food" }
     ]
   },
   {
@@ -154,9 +156,9 @@ const TASK_SECTIONS = [
     emoji: "🎒",
     title: "Till skolan",
     tasks: [
-      { id: "schema", emoji: "🗓️", text: "Kolla schemat" },
-      { id: "packa-vaskan", emoji: "💻", text: "Packa dator och böcker" },
-      { id: "till-skolan", emoji: "🚲", text: "Ta dig till skolan i tid" }
+      { id: "schema", emoji: "🗓️", text: "Kolla schemat" , gives: "love" },
+      { id: "packa-vaskan", emoji: "💻", text: "Packa dator och böcker" , gives: "food" },
+      { id: "till-skolan", emoji: "🚲", text: "Ta dig till skolan i tid" , gives: "love" }
     ]
   },
   {
@@ -164,22 +166,22 @@ const TASK_SECTIONS = [
     emoji: "🏠",
     title: "Hemma efter skolan",
     tasks: [
-      { id: "mellanmal", emoji: "🥪", text: "Ät ett mellanmål" },
+      { id: "mellanmal", emoji: "🥪", text: "Ät ett mellanmål" , gives: "food" },
       // Sopvändorna varvas med Sassa så båda gör båda sorterna. Hans turer:
       // matsopor onsdag och lördag jämn vecka samt måndag ojämn, plast torsdag
       // jämn vecka och tisdag ojämn. Resten av dagarna är hennes.
-      { id: "matsopor-ons", emoji: "🍂", text: "Gå ut med matsopor", days: [DAG_ONS], weeks: "even", home: true },
-      { id: "matsopor-lor", emoji: "🍂", text: "Gå ut med matsopor", days: [DAG_LOR], weeks: "even", home: true },
-      { id: "matsopor-man", emoji: "🍂", text: "Gå ut med matsopor", days: [DAG_MAN], weeks: "odd", home: true },
-      { id: "plastsopor-tors", emoji: "♻️", text: "Gå ut med plastsopor", days: [DAG_TORS], weeks: "even", home: true },
-      { id: "plastsopor-tis", emoji: "♻️", text: "Gå ut med plastsopor", days: [DAG_TIS], weeks: "odd", home: true },
-      { id: "metallglas", emoji: "🍾", text: "Gå ut med metall- och glassopor", days: [DAG_SON], home: true },
-      { id: "papperkartong", emoji: "📦", text: "Gå ut med papper och kartong", days: [DAG_SON], home: true },
-      { id: "restavfall", emoji: "🗑️", text: "Gå ut med restavfall", days: [DAG_SON], home: true },
-      { id: "tvatten", emoji: "🧺", text: "Gå ner med tvätten", days: [DAG_MAN, DAG_TORS], home: true },
-      { id: "snygga-rum", emoji: "🧹", text: "Plocka undan rummet", home: true },
-      { id: "dammsuga", emoji: "🌀", text: "Dammsuga", days: [DAG_LOR], home: true },
-      { id: "diskmaskin", emoji: "🍽️", text: "Töm eller fyll diskmaskinen", home: true }
+      { id: "matsopor-ons", emoji: "🍂", text: "Gå ut med matsopor", days: [DAG_ONS], weeks: "even", home: true , gives: "love" },
+      { id: "matsopor-lor", emoji: "🍂", text: "Gå ut med matsopor", days: [DAG_LOR], weeks: "even", home: true , gives: "food" },
+      { id: "matsopor-man", emoji: "🍂", text: "Gå ut med matsopor", days: [DAG_MAN], weeks: "odd", home: true , gives: "love" },
+      { id: "plastsopor-tors", emoji: "♻️", text: "Gå ut med plastsopor", days: [DAG_TORS], weeks: "even", home: true , gives: "food" },
+      { id: "plastsopor-tis", emoji: "♻️", text: "Gå ut med plastsopor", days: [DAG_TIS], weeks: "odd", home: true , gives: "love" },
+      { id: "metallglas", emoji: "🍾", text: "Gå ut med metall- och glassopor", days: [DAG_SON], home: true , gives: "food" },
+      { id: "papperkartong", emoji: "📦", text: "Gå ut med papper och kartong", days: [DAG_SON], home: true , gives: "love" },
+      { id: "restavfall", emoji: "🗑️", text: "Gå ut med restavfall", days: [DAG_SON], home: true , gives: "food" },
+      { id: "tvatten", emoji: "🧺", text: "Gå ner med tvätten", days: [DAG_MAN, DAG_TORS], home: true , gives: "love" },
+      { id: "snygga-rum", emoji: "🧹", text: "Plocka undan rummet", home: true , gives: "food" },
+      { id: "dammsuga", emoji: "🌀", text: "Dammsuga", days: [DAG_LOR], home: true , gives: "love" },
+      { id: "diskmaskin", emoji: "🍽️", text: "Töm eller fyll diskmaskinen", home: true , gives: "food" }
     ]
   },
   {
@@ -187,9 +189,9 @@ const TASK_SECTIONS = [
     emoji: "📚",
     title: "Skolarbete och kompisar",
     tasks: [
-      { id: "laxa", emoji: "📖", text: "Gör läxan" },
-      { id: "plugg-prov", emoji: "📝", text: "Plugga på kommande prov", days: [DAG_MAN, DAG_ONS, DAG_SON] },
-      { id: "kompis", emoji: "💬", text: "Träffa eller hör av dig till en kompis" }
+      { id: "laxa", emoji: "📖", text: "Gör läxan" , gives: "love" },
+      { id: "plugg-prov", emoji: "📝", text: "Plugga på kommande prov", days: [DAG_MAN, DAG_ONS, DAG_SON] , gives: "food" },
+      { id: "kompis", emoji: "💬", text: "Träffa eller hör av dig till en kompis" , gives: "love" }
     ]
   },
   {
@@ -197,9 +199,9 @@ const TASK_SECTIONS = [
     emoji: "🏋️",
     title: "Träning",
     tasks: [
-      { id: "traning", emoji: "🏋️", text: "Träningspass", days: [DAG_TIS, DAG_TORS, DAG_LOR] },
-      { id: "duscha", emoji: "🚿", text: "Duscha", days: [DAG_TIS, DAG_TORS, DAG_LOR] },
-      { id: "ut-en-sving", emoji: "🌤️", text: "Ut en sväng, rör på dig" }
+      { id: "traning", emoji: "🏋️", text: "Träningspass", days: [DAG_TIS, DAG_TORS, DAG_LOR] , gives: "food" },
+      { id: "duscha", emoji: "🚿", text: "Duscha", days: [DAG_TIS, DAG_TORS, DAG_LOR] , gives: "love" },
+      { id: "ut-en-sving", emoji: "🌤️", text: "Ut en sväng, rör på dig" , gives: "food" }
     ]
   },
   {
@@ -207,13 +209,13 @@ const TASK_SECTIONS = [
     emoji: "🌙",
     title: "Kväll",
     tasks: [
-      { id: "tander-kvall", emoji: "🪥", text: "Borsta tänderna" },
-      { id: "klader-imorgon", emoji: "🧦", text: "Lägg fram kläder till imorgon" },
-      { id: "dator-laddning", emoji: "🔌", text: "Sätt datorn på laddning" },
-      { id: "planera-veckan", emoji: "🗒️", text: "Planera kommande vecka", days: [DAG_SON] },
-      { id: "skarm-av", emoji: "📵", text: "Lägg undan mobilen en stund före läggdags" },
-      { id: "las", emoji: "📕", text: "Läs en stund" },
-      { id: "lagga-sig", emoji: "😴", text: "Lägg dig i tid" }
+      { id: "tander-kvall", emoji: "🪥", text: "Borsta tänderna" , gives: "love" },
+      { id: "klader-imorgon", emoji: "🧦", text: "Lägg fram kläder till imorgon" , gives: "food" },
+      { id: "dator-laddning", emoji: "🔌", text: "Sätt datorn på laddning" , gives: "love" },
+      { id: "planera-veckan", emoji: "🗒️", text: "Planera kommande vecka", days: [DAG_SON] , gives: "food" },
+      { id: "skarm-av", emoji: "📵", text: "Lägg undan mobilen en stund före läggdags" , gives: "love" },
+      { id: "las", emoji: "📕", text: "Läs en stund" , gives: "food" },
+      { id: "lagga-sig", emoji: "😴", text: "Lägg dig i tid" , gives: "love" }
     ]
   }
 ];
@@ -256,6 +258,8 @@ const FOOD_PER_TASK = 1;
 const LOVE_PER_TASK = 1;
 const MAX_FOOD = 4; // tak på lagret, så mat och kärlek måste tjänas in löpande
 const MAX_LOVE = 4;
+const HUNGER_PER_FEED = 12; // liten påfyllning per matning, så baren inte hoppar i ett klick
+const HAPPINESS_PER_LOVE = 20;
 
 function xpToNext(level) {
   return 350 + (level - 1) * 80;
@@ -730,6 +734,14 @@ function checkBabyMilestones() {
 /* ---------------------------------------------------------
    Logik: klara uppgift, mata, ge kärlek
    --------------------------------------------------------- */
+function taskById(taskId) {
+  for (const section of TASK_SECTIONS) {
+    const found = section.tasks.find((t) => t.id === taskId);
+    if (found) return found;
+  }
+  return null;
+}
+
 function completeTask(taskId, sectionId) {
   const alreadyDone = !!state.completedToday[taskId];
 
@@ -746,8 +758,9 @@ function completeTask(taskId, sectionId) {
   if (!state.rewardedToday[taskId]) {
     state.rewardedToday[taskId] = true;
     state.xp += XP_PER_TASK;
-    state.food = clamp(state.food + FOOD_PER_TASK, 0, MAX_FOOD);
-    state.love = clamp(state.love + LOVE_PER_TASK, 0, MAX_LOVE);
+    const gives = taskById(taskId) && taskById(taskId).gives === "love" ? "love" : "food";
+    if (gives === "love") state.love = clamp(state.love + LOVE_PER_TASK, 0, MAX_LOVE);
+    else state.food = clamp(state.food + FOOD_PER_TASK, 0, MAX_FOOD);
     state.totalCompleted += 1;
 
     const levelBefore = state.level;
@@ -762,7 +775,8 @@ function completeTask(taskId, sectionId) {
 
     showToast(pick(TASK_MESSAGES));
     burstConfetti(14);
-    flashMood("love", 900);
+    floatEmojiFromPet(gives === "love" ? "🧡" : petInfo().foodEmoji);
+    flashMood(gives === "love" ? "love" : "yum", 900);
 
     if (leveledUp) {
       setTimeout(() => {
@@ -822,9 +836,10 @@ function feedPet() {
   if (state.food <= 0) return;
   const info = petInfo();
   state.food -= 1;
-  state.hunger = clamp(state.hunger + 20, 0, 100);
+  state.hunger = clamp(state.hunger + HUNGER_PER_FEED, 0, 100);
   saveState();
   updateStatsUI();
+  syncStateToWorker(); // annars kan servern tjata om hunger strax efter en matning
   floatEmojiFromPet(info.foodEmoji);
   setBubble(pick(FOOD_MESSAGES[state.petType] || FOOD_MESSAGES.crow));
   flashMood("yum", 900);
@@ -834,9 +849,10 @@ function feedPet() {
 function lovePet() {
   if (state.love <= 0) return;
   state.love -= 1;
-  state.happiness = clamp(state.happiness + 20, 0, 100);
+  state.happiness = clamp(state.happiness + HAPPINESS_PER_LOVE, 0, 100);
   saveState();
   updateStatsUI();
+  syncStateToWorker();
   floatEmojiFromPet("🧡");
   setBubble(pick(LOVE_MESSAGES));
   flashMood("love", 900);
