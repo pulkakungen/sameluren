@@ -89,7 +89,7 @@ const FIXED_REMINDERS = [
   {
     id: "affirmation",
     hour: 7,
-    minute: 10,
+    minute: 30,
     messages: [
       // Självkänsla och trygghet
       "🎯 Veckans affirmation: Jag duger precis som jag är.",

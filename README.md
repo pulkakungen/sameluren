@@ -57,7 +57,7 @@ tystnad under lektionstid så djuret inte tjatar när mobilen ändå är inlåst
 | Tid | Vad |
 | --- | --- |
 | 07:00 | Dags att gå upp |
-| 07:10 | Veckans affirmation |
+| 07:30 | Veckans affirmation |
 | 30 min före skolslut | Glöm inte böckerna, kolla listan |
 | 21:00 | Kvällsrutinen |
 | 22:00 | God natt |
