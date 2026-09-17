@@ -220,6 +220,7 @@ async function buildSummary(env) {
   const todayRaw = await env.PUSH_KV.get(HISTORY_PREFIX + dateStr);
   const today = todayRaw ? JSON.parse(todayRaw) : null;
   const sentRaw = await env.PUSH_KV.get(`reminders:${dateStr}`);
+  const cronLast = await env.PUSH_KV.get(CRON_HEARTBEAT_KEY);
 
   const tasks = today && Array.isArray(today.tasks) ? today.tasks : [];
 
@@ -258,6 +259,7 @@ async function buildSummary(env) {
     totalToday: tasks.length,
     tasks,
     remindersSentToday: sentRaw ? JSON.parse(sentRaw) : [],
+    lastCronAt: cronLast || null,
     affirmation: today && today.affirmationSent ? today.affirmationSent : null,
     history
   };
@@ -314,8 +316,13 @@ async function sendPush(env, message) {
 
 const SCHOOL_END_MESSAGE = "Snart slut för idag. Glöm inte böckerna hem, och kolla vad som står på listan.";
 
+const CRON_HEARTBEAT_KEY = "cron:last";
+
 async function handleScheduled(env) {
   try {
+    // Pulsslag: skrivs varje gång schemat körs, så det går att skilja
+    // "cron kör inte alls" från "cron kör men skickar inget".
+    await env.PUSH_KV.put(CRON_HEARTBEAT_KEY, new Date().toISOString());
     await runScheduledChecks(env);
   } catch (err) {
     // ett enskilt fel ska aldrig tysta hela cron-körningen utan spår
@@ -551,7 +558,9 @@ export default {
         `Notiser skickade idag (${dateStr}): ${sentToday || "inga än"}`,
         `Notiser skickade igår: ${sentYesterday || "inga"}`,
         "",
-        `Sync-status (app-aktivitet): ${stateRaw || "appen har aldrig synkat"}`
+        `Sync-status (app-aktivitet): ${stateRaw || "appen har aldrig synkat"}`,
+        "",
+        `Schemat kördes senast: ${(await env.PUSH_KV.get(CRON_HEARTBEAT_KEY)) || "ALDRIG, cron verkar inte köra alls"}`
       ];
       return new Response(lines.join("\n"), { headers: { ...CORS_HEADERS, "Content-Type": "text/plain; charset=utf-8" } });
     }
