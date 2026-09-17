@@ -1,5 +1,6 @@
 import { buildPushPayload } from "@block65/webcrypto-web-push";
 import { handlePanelRequest, mergeSyncedTasks } from "./panel.js";
+import { maybeSendDailySheet } from "./sheets.js";
 
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
@@ -343,6 +344,17 @@ async function handleScheduled(env) {
 async function runScheduledChecks(env) {
   const now = new Date();
   const { dateStr, minutesOfDay, weekday } = stockholmParts(now);
+
+  // dagens rad till kalkylarket, strax före midnatt
+  const stateForSheet = await env.PUSH_KV.get(STATE_KEY);
+  await maybeSendDailySheet(env, {
+    app: "sameluren",
+    title: "Sameluren",
+    dateStr,
+    minutesOfDay,
+    historyPrefix: HISTORY_PREFIX,
+    streak: stateForSheet ? JSON.parse(stateForSheet).streak ?? null : null
+  });
 
   const hasSub = !!(await env.PUSH_KV.get(SUBSCRIPTION_KEY));
   if (!hasSub) return;
