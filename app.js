@@ -254,7 +254,7 @@ const TASK_SECTIONS = [
     emoji: "📚",
     title: "Skolarbete och kompisar",
     tasks: [
-      { id: "laxa", emoji: "📖", text: "Gör läxan", gives: "love" },
+      { id: "laxa", emoji: "📖", text: "Gör läxan", days: [DAG_MAN, DAG_TIS, DAG_ONS, DAG_TORS], gives: "love" },
       { id: "plugg-prov", emoji: "📝", text: "Plugga på kommande prov", days: [DAG_MAN, DAG_ONS, DAG_SON], gives: "food" },
       { id: "kompis", emoji: "💬", text: "Träffa eller hör av dig till en kompis", gives: "love" }
     ]
