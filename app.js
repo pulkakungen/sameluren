@@ -103,6 +103,8 @@ function syncStateToWorker() {
 // parity: "even"/"odd" ger uppgifter som återkommer varannan dag.
 // gives: "food" eller "love". Varje uppgift ger det ena, aldrig båda, så lagret
 // fylls långsammare och matning och kärlek förblir något att hushålla med.
+// "both" finns för extrauppgifter som ska väga tyngre.
+// date: "ÅÅÅÅ-MM-DD" gör uppgiften till en engångsgrej just den dagen.
 const DAG_MAN = 1, DAG_TIS = 2, DAG_ONS = 3, DAG_TORS = 4, DAG_FRE = 5, DAG_LOR = 6, DAG_SON = 0;
 
 // Samuel bor här jämna veckor från onsdagen, och åker till sin mamma på
@@ -123,6 +125,10 @@ function isoWeekNumber(date) {
 function isHomeOnDate(date) {
   const days = isoWeekNumber(date) % 2 === 0 ? HOME_EVEN_WEEK_DAYS : HOME_ODD_WEEK_DAYS;
   return days.includes(date.getDay());
+}
+
+function dateKey(date) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 }
 
 function isHomeToday() {
@@ -196,7 +202,11 @@ const TASK_SECTIONS = [
       { id: "tvatten", emoji: "🧺", text: "Gå ner med tvätten", days: [DAG_MAN, DAG_TORS], home: true, gives: "love" },
       { id: "snygga-rum", emoji: "🧹", text: "Plocka undan rummet", home: true, gives: "food" },
       { id: "dammsuga", emoji: "🌀", text: "Dammsuga", days: [DAG_LOR], home: true, gives: "love" },
-      { id: "diskmaskin", emoji: "🍽️", text: "Töm eller fyll diskmaskinen", home: true, gives: "food" }
+      { id: "diskmaskin", emoji: "🍽️", text: "Töm eller fyll diskmaskinen", home: true, gives: "food" },
+      // Extrauppgifter för en enskild dag. Ge dem gärna "both", de väger tyngre.
+      { id: "presentpapper-2026-09-18", emoji: "🎁", text: "Ta ner presentpapper i källaren", date: "2026-09-18", gives: "both" },
+      { id: "nedanvaning-2026-09-18", emoji: "📥", text: "Plocka undan på nedanvåningen", date: "2026-09-18", gives: "both" },
+      { id: "kartong-tradgard-2026-09-18", emoji: "📦", text: "Plocka kartong i trädgården", date: "2026-09-18", gives: "both" }
     ]
   },
   {
@@ -248,6 +258,7 @@ function isTaskActiveOnDate(task, date) {
   if (task.weeks === "even" && !isEvenWeek(date)) return false;
   if (task.weeks === "odd" && isEvenWeek(date)) return false;
   if (task.slots && !matchesSlot(task.slots, date)) return false;
+  if (task.date && task.date !== dateKey(date)) return false; // engångsuppgift ett visst datum
   if (task.parity) {
     const isEven = dayOfYear(date) % 2 === 0;
     if (task.parity === "even" && !isEven) return false;
@@ -774,9 +785,9 @@ function completeTask(taskId, sectionId) {
   if (!state.rewardedToday[taskId]) {
     state.rewardedToday[taskId] = true;
     state.xp += XP_PER_TASK;
-    const gives = taskById(taskId) && taskById(taskId).gives === "love" ? "love" : "food";
-    if (gives === "love") state.love = clamp(state.love + LOVE_PER_TASK, 0, MAX_LOVE);
-    else state.food = clamp(state.food + FOOD_PER_TASK, 0, MAX_FOOD);
+    const gives = (taskById(taskId) || {}).gives === "love" ? "love" : (taskById(taskId) || {}).gives === "both" ? "both" : "food";
+    if (gives !== "food") state.love = clamp(state.love + LOVE_PER_TASK, 0, MAX_LOVE);
+    if (gives !== "love") state.food = clamp(state.food + FOOD_PER_TASK, 0, MAX_FOOD);
     state.totalCompleted += 1;
 
     const levelBefore = state.level;
@@ -792,6 +803,7 @@ function completeTask(taskId, sectionId) {
     showToast(pick(TASK_MESSAGES));
     burstConfetti(14);
     floatEmojiFromPet(gives === "love" ? "🧡" : petInfo().foodEmoji);
+    if (gives === "both") setTimeout(() => floatEmojiFromPet("🧡"), 180);
     flashMood(gives === "love" ? "love" : "yum", 900);
 
     if (leveledUp) {
