@@ -12,6 +12,7 @@ const SUBSCRIPTION_KEY = "subscription";
 const STATE_KEY = "state";
 const HISTORY_PREFIX = "history:";
 const CURRENT_AFFIRMATION_KEY = "current_affirmation";
+const EXTRA_PREFIX = "extra:"; // engångsuppgifter som föräldrapanelen lägger till
 
 // Speglar uppgiftslistan i app.js, i samma ordning, så rapporten alltid får
 // samma kolumnordning oavsett vilka uppgifter som var aktiva en viss dag.
@@ -226,6 +227,7 @@ async function buildSummary(env, url, request) {
   const today = todayRaw ? JSON.parse(todayRaw) : null;
   const sentRaw = await env.PUSH_KV.get(`reminders:${dateStr}`);
   const cronLast = await env.PUSH_KV.get(CRON_HEARTBEAT_KEY);
+  const extras = await readExtras(env, dateStr);
 
   const tasks = today && Array.isArray(today.tasks) ? today.tasks : [];
 
@@ -285,6 +287,8 @@ async function buildSummary(env, url, request) {
     totalToday: tasks.length,
     tasks,
     remindersSentToday: sentRaw ? JSON.parse(sentRaw) : [],
+    supportsExtra: true,
+    extra: extras,
     lastCronAt: cronLast || null,
     affirmation: today && today.affirmationSent ? today.affirmationSent : null,
     history
@@ -296,6 +300,17 @@ function json(data, status = 200) {
     status,
     headers: { "Content-Type": "application/json", ...CORS_HEADERS }
   });
+}
+
+async function readExtras(env, dateStr) {
+  const raw = await env.PUSH_KV.get(EXTRA_PREFIX + dateStr);
+  const list = raw ? JSON.parse(raw) : [];
+  return Array.isArray(list) ? list : [];
+}
+
+async function writeExtras(env, dateStr, list) {
+  // sparas i två månader, sen städar KV bort dem av sig själv
+  await env.PUSH_KV.put(EXTRA_PREFIX + dateStr, JSON.stringify(list), { expirationTtl: 60 * 60 * 24 * 60 });
 }
 
 async function mergeHistoryRecord(env, dateStr, patch) {
@@ -459,7 +474,7 @@ async function buildReportCsv(env) {
   const dates = Object.keys(records).sort();
   const weekdayNames = ["söndag", "måndag", "tisdag", "onsdag", "torsdag", "fredag", "lördag"];
 
-  const header = ["Datum", "Veckodag", ...REPORT_COLUMNS.map((c) => c.label), "Allt klart den dagen", "Veckans affirmation"];
+  const header = ["Datum", "Veckodag", ...REPORT_COLUMNS.map((c) => c.label), "Extrauppgifter", "Allt klart den dagen", "Veckans affirmation"];
   const rows = [header];
 
   for (const dateStr of dates) {
@@ -471,6 +486,8 @@ async function buildReportCsv(env) {
       const t = taskById[col.id];
       row.push(t ? (t.done ? "Ja" : "Nej") : "–");
     }
+    const extraTasks = (record.tasks || []).filter((t) => String(t.id).startsWith("extra-"));
+    row.push(extraTasks.length ? `${extraTasks.filter((t) => t.done).length} av ${extraTasks.length}` : "");
     row.push(record.allDoneToday ? "Ja" : "Nej");
     row.push(record.affirmationSent ? record.affirmationSent.replace(/^🎯 Veckans affirmation: /, "") : "");
     rows.push(row);
@@ -553,8 +570,42 @@ export default {
       if (!adminKeyOk(request, url, env)) return denied();
     }
 
+    // Barnets app frågar efter dagens extrauppgifter. Öppen, precis som /sync.
+    if (url.pathname === "/extra" && request.method === "GET") {
+      const dateStr = url.searchParams.get("date") || stockholmParts(new Date()).dateStr;
+      return json({ date: dateStr, tasks: await readExtras(env, dateStr) });
+    }
+
     if (url.pathname === "/report" && request.method === "GET") {
       return buildReportCsv(env);
+    }
+
+    // Föräldrapanelen lägger till en engångsuppgift.
+    if (url.pathname === "/admin/extra" && request.method === "POST") {
+      const body = await request.json().catch(() => ({}));
+      const text = (body.text || "").trim();
+      if (!text) return json({ ok: false, error: "ingen text" }, 400);
+      const dateStr = body.date || stockholmParts(new Date()).dateStr;
+      const list = await readExtras(env, dateStr);
+      const task = {
+        id: "extra-" + dateStr + "-" + Math.random().toString(36).slice(2, 8),
+        emoji: (body.emoji || "⭐").slice(0, 4),
+        text: text.slice(0, 80),
+        gives: ["food", "love", "both"].includes(body.gives) ? body.gives : "both",
+        section: body.section || "hemma",
+        date: dateStr
+      };
+      list.push(task);
+      await writeExtras(env, dateStr, list);
+      return json({ ok: true, task, tasks: list });
+    }
+
+    if (url.pathname === "/admin/extra/delete" && request.method === "POST") {
+      const body = await request.json().catch(() => ({}));
+      const dateStr = body.date || stockholmParts(new Date()).dateStr;
+      const list = (await readExtras(env, dateStr)).filter((t) => t.id !== body.id);
+      await writeExtras(env, dateStr, list);
+      return json({ ok: true, tasks: list });
     }
 
     if (url.pathname === "/admin/summary" && request.method === "GET") {

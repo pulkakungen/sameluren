@@ -96,6 +96,46 @@ function syncStateToWorker() {
 }
 
 /* ---------------------------------------------------------
+   Extrauppgifter från föräldrapanelen
+   Hämtas från workern, sparas lokalt så de finns kvar offline.
+   --------------------------------------------------------- */
+const EXTRA_STORAGE = DEMO_MODE ? "sameluren_demo_extra_v1" : "sameluren_extra_v1";
+let extraTasks = [];
+
+function loadExtras() {
+  try {
+    const raw = localStorage.getItem(EXTRA_STORAGE);
+    const list = raw ? JSON.parse(raw) : [];
+    extraTasks = Array.isArray(list) ? list : [];
+  } catch (e) {
+    extraTasks = [];
+  }
+}
+
+async function fetchExtras() {
+  if (DEMO_MODE) return;
+  try {
+    const res = await fetch(PUSH_WORKER_URL + "/extra?date=" + todayStr());
+    if (!res.ok) return;
+    const data = await res.json();
+    if (!Array.isArray(data.tasks)) return;
+    extraTasks = data.tasks;
+    localStorage.setItem(EXTRA_STORAGE, JSON.stringify(extraTasks));
+    if (state.petType) {
+      renderTaskSections();
+      updateStatsUI();
+    }
+  } catch (e) {
+    // ingen uppkoppling, de sparade extrauppgifterna får duga
+  }
+}
+
+function extrasForSection(sectionId, date) {
+  const key = dateKey(date);
+  return extraTasks.filter((t) => (t.section || "hemma") === sectionId && t.date === key);
+}
+
+/* ---------------------------------------------------------
    Uppgifter, indelade i sektioner för hela dagen
    --------------------------------------------------------- */
 // days: valfri lista med veckodagsnummer (0=söndag ... 6=lördag) uppgiften gäller.
@@ -271,7 +311,7 @@ function isTaskActiveToday(task) {
 }
 function activeTasksForSection(section, date) {
   const d = date === undefined ? new Date() : date;
-  return section.tasks.filter((t) => isTaskActiveOnDate(t, d));
+  return section.tasks.filter((t) => isTaskActiveOnDate(t, d)).concat(extrasForSection(section.id, d));
 }
 function totalTasksForDate(date) {
   return TASK_SECTIONS.reduce((s, sec) => s + activeTasksForSection(sec, date).length, 0);
@@ -766,7 +806,7 @@ function taskById(taskId) {
     const found = section.tasks.find((t) => t.id === taskId);
     if (found) return found;
   }
-  return null;
+  return extraTasks.find((t) => t.id === taskId) || null;
 }
 
 function completeTask(taskId, sectionId) {
@@ -1023,10 +1063,17 @@ function initAppEvents() {
    Init
    --------------------------------------------------------- */
 function init() {
+  loadExtras();
   handleDailyReset();
   applyStatDecay();
   initAppEvents();
   registerServiceWorker();
+  fetchExtras();
+
+  // hämta om när appen kommer fram igen, så nya extrauppgifter dyker upp
+  document.addEventListener("visibilitychange", () => {
+    if (!document.hidden) fetchExtras();
+  });
 
   if (state.petType) {
     showAppScreen();
