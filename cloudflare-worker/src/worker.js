@@ -13,7 +13,7 @@ const STATE_KEY = "state";
 const HISTORY_PREFIX = "history:";
 const CURRENT_AFFIRMATION_KEY = "current_affirmation";
 const EXTRA_PREFIX = "extra:"; // engångsuppgifter som föräldrapanelen lägger till
-const PAUSE_KEY = "pause_until"; // appen är pausad fram till och med dagen före detta datum
+const PAUSE_KEY = "pause_until"; // appen sover fram till denna tidpunkt, svensk lokaltid
 
 // Speglar uppgiftslistan i app.js, i samma ordning, så rapporten alltid får
 // samma kolumnordning oavsett vilka uppgifter som var aktiva en viss dag.
@@ -304,14 +304,24 @@ function json(data, status = 200) {
   });
 }
 
-// Pausen gäller till och med dagen före det sparade datumet, så
-// "2026-09-30" betyder att appen vaknar på onsdagen den 30:e.
+// Pausen gäller fram till den sparade tidpunkten, svensk lokaltid.
+// "2026-09-30T12:00" betyder att appen vaknar till lunch på onsdagen.
+// Ett blankt datum utan klockslag räknas som midnatt, som förut.
 async function readPause(env) {
   return (await env.PUSH_KV.get(PAUSE_KEY)) || null;
 }
 
-function isPaused(pauseUntil, dateStr) {
-  return !!pauseUntil && dateStr < pauseUntil;
+function normalizePauseUntil(value) {
+  if (!value) return null;
+  return /^\d{4}-\d{2}-\d{2}$/.test(value) ? value + "T00:00" : value;
+}
+
+function isPaused(pauseUntil, dateStr, minutesOfDay) {
+  const until = normalizePauseUntil(pauseUntil);
+  if (!until) return false;
+  const hh = String(Math.floor(minutesOfDay / 60)).padStart(2, "0");
+  const mm = String(minutesOfDay % 60).padStart(2, "0");
+  return `${dateStr}T${hh}:${mm}` < until;
 }
 
 async function readExtras(env, dateStr) {
@@ -402,7 +412,7 @@ async function runScheduledChecks(env) {
   if (!hasSub) return;
 
   // Pausad app hör inte av sig alls, varken påminnelser eller tjat.
-  if (isPaused(await readPause(env), dateStr)) return;
+  if (isPaused(await readPause(env), dateStr, minutesOfDay)) return;
 
   // --- Fasta påminnelser ---
   const sentKey = `reminders:${dateStr}`;
@@ -597,7 +607,7 @@ export default {
 
     // Föräldrapanelen lägger till en engångsuppgift.
     // Pausa appen, till exempel när han är hos sin mamma en extra dag.
-    // /admin/pause?until=2026-09-30 pausar, /admin/pause?clear=1 tar bort.
+    // /admin/pause?until=2026-09-30T12:00 pausar, /admin/pause?clear=1 tar bort.
     if (url.pathname === "/admin/pause" && (request.method === "GET" || request.method === "POST")) {
       const body = request.method === "POST" ? await request.json().catch(() => ({})) : {};
       const clear = url.searchParams.get("clear") === "1" || body.clear === true;
@@ -605,9 +615,9 @@ export default {
         await env.PUSH_KV.delete(PAUSE_KEY);
         return json({ ok: true, pausedUntil: null });
       }
-      const until = url.searchParams.get("until") || body.until;
-      if (!/^\d{4}-\d{2}-\d{2}$/.test(until || "")) {
-        return json({ ok: false, error: "ange until=ÅÅÅÅ-MM-DD eller clear=1" }, 400);
+      const until = (url.searchParams.get("until") || body.until || "").trim();
+      if (!/^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2})?$/.test(until)) {
+        return json({ ok: false, error: "ange until=ÅÅÅÅ-MM-DD eller ÅÅÅÅ-MM-DDTHH:MM, eller clear=1" }, 400);
       }
       await env.PUSH_KV.put(PAUSE_KEY, until);
       return json({ ok: true, pausedUntil: until });

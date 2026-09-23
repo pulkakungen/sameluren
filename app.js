@@ -121,11 +121,12 @@ async function fetchExtras() {
     if (!Array.isArray(data.tasks)) return;
     extraTasks = data.tasks;
     localStorage.setItem(EXTRA_STORAGE, JSON.stringify(extraTasks));
-    // Pausen sätts från föräldrapanelen och gäller till och med dagen före
-    // det datum som kommer tillbaka.
+    // Pausen sätts från föräldrapanelen och gäller fram till den tidpunkt
+    // som kommer tillbaka.
     if (state.pausedUntil !== (data.pausedUntil || null)) {
       state.pausedUntil = data.pausedUntil || null;
       saveState();
+      schedulePauseWakeup();
       renderAll();
       return;
     }
@@ -180,13 +181,40 @@ function dateKey(date) {
 }
 
 // Pausad app: inga uppgifter, ingen förlorad streak, inga notiser. Gäller
-// till och med dagen före det sparade datumet.
+// fram till den sparade tidpunkten, till exempel "2026-09-30T12:00".
+// Ett blankt datum utan klockslag räknas som midnatt.
+function pausedUntilStamp() {
+  const v = state.pausedUntil;
+  if (!v) return null;
+  return /^\d{4}-\d{2}-\d{2}$/.test(v) ? v + "T00:00" : v;
+}
+
 function isPausedOn(date) {
-  return !!state.pausedUntil && dateKey(date) < state.pausedUntil;
+  const until = pausedUntilStamp();
+  if (!until) return false;
+  const hh = String(date.getHours()).padStart(2, "0");
+  const mm = String(date.getMinutes()).padStart(2, "0");
+  return `${dateKey(date)}T${hh}:${mm}` < until;
 }
 
 function isPausedToday() {
   return isPausedOn(new Date());
+}
+
+// Pausen tar slut mitt på dagen, så appen väcker sig själv i stället för
+// att stå kvar och se pausad ut tills man startar om den.
+let pauseWakeupTimer = null;
+function schedulePauseWakeup() {
+  if (pauseWakeupTimer) clearTimeout(pauseWakeupTimer);
+  pauseWakeupTimer = null;
+  const until = pausedUntilStamp();
+  if (!until) return;
+  const ms = new Date(until).getTime() - Date.now();
+  if (ms <= 0 || ms > 24 * 60 * 60 * 1000) return;
+  pauseWakeupTimer = setTimeout(() => {
+    pauseWakeupTimer = null;
+    renderAll();
+  }, ms + 1000);
 }
 
 function isHomeToday() {
@@ -519,9 +547,9 @@ function handleDailyReset() {
   const today = todayStr();
   if (state.lastActiveDate === today) return;
 
-  if (state.lastActiveDate && !isPausedOn(new Date(state.lastActiveDate + "T00:00:00"))) {
+  if (state.lastActiveDate && !isPausedOn(new Date(state.lastActiveDate + "T12:00:00"))) {
     const completedCount = Object.keys(state.completedToday).length;
-    const lastActiveDateObj = new Date(state.lastActiveDate + "T00:00:00");
+    const lastActiveDateObj = new Date(state.lastActiveDate + "T12:00:00");
     const wasFullDay = completedCount >= totalTasksForDate(lastActiveDateObj);
     const consecutive = isConsecutiveDay(state.lastActiveDate, today);
 
@@ -1106,6 +1134,7 @@ function init() {
   applyStatDecay();
   initAppEvents();
   registerServiceWorker();
+  schedulePauseWakeup();
   fetchExtras();
 
   // hämta om när appen kommer fram igen, så nya extrauppgifter dyker upp
