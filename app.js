@@ -121,6 +121,14 @@ async function fetchExtras() {
     if (!Array.isArray(data.tasks)) return;
     extraTasks = data.tasks;
     localStorage.setItem(EXTRA_STORAGE, JSON.stringify(extraTasks));
+    // Pausen sätts från föräldrapanelen och gäller till och med dagen före
+    // det datum som kommer tillbaka.
+    if (state.pausedUntil !== (data.pausedUntil || null)) {
+      state.pausedUntil = data.pausedUntil || null;
+      saveState();
+      renderAll();
+      return;
+    }
     if (state.petType) {
       renderTaskSections();
       updateStatsUI();
@@ -169,6 +177,16 @@ function isHomeOnDate(date) {
 
 function dateKey(date) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+}
+
+// Pausad app: inga uppgifter, ingen förlorad streak, inga notiser. Gäller
+// till och med dagen före det sparade datumet.
+function isPausedOn(date) {
+  return !!state.pausedUntil && dateKey(date) < state.pausedUntil;
+}
+
+function isPausedToday() {
+  return isPausedOn(new Date());
 }
 
 function isHomeToday() {
@@ -311,6 +329,7 @@ function isTaskActiveToday(task) {
 }
 function activeTasksForSection(section, date) {
   const d = date === undefined ? new Date() : date;
+  if (isPausedOn(d)) return [];
   return section.tasks.filter((t) => isTaskActiveOnDate(t, d)).concat(extrasForSection(section.id, d));
 }
 function totalTasksForDate(date) {
@@ -460,7 +479,8 @@ function defaultState() {
     rewardedToday: {},
     totalCompleted: 0,
     sectionsCollapsed: {},
-    levelResetV1Applied: false
+    levelResetV1Applied: false,
+    pausedUntil: null
   };
 }
 
@@ -499,7 +519,7 @@ function handleDailyReset() {
   const today = todayStr();
   if (state.lastActiveDate === today) return;
 
-  if (state.lastActiveDate) {
+  if (state.lastActiveDate && !isPausedOn(new Date(state.lastActiveDate + "T00:00:00"))) {
     const completedCount = Object.keys(state.completedToday).length;
     const lastActiveDateObj = new Date(state.lastActiveDate + "T00:00:00");
     const wasFullDay = completedCount >= totalTasksForDate(lastActiveDateObj);
@@ -765,9 +785,12 @@ function renderAll() {
   updateStatsUI();
   renderTaskSections();
   renderBabyAvatar();
-  setBubble(greetingForNow());
+  const pausad = isPausedToday();
+  setBubble(pausad ? "Vi tar helg. Appen är pausad, vi ses när du är tillbaka." : greetingForNow());
   document.getElementById("demo-badge").hidden = !DEMO_MODE;
-  document.getElementById("away-badge").hidden = isHomeToday();
+  document.getElementById("away-badge").hidden = isHomeToday() && !pausad;
+  if (pausad) document.getElementById("away-badge").textContent = "⏸ Pausad";
+  else document.getElementById("away-badge").textContent = "🎒 Hos mamma";
 }
 
 /* ---------------------------------------------------------

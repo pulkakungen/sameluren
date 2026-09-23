@@ -13,6 +13,7 @@ const STATE_KEY = "state";
 const HISTORY_PREFIX = "history:";
 const CURRENT_AFFIRMATION_KEY = "current_affirmation";
 const EXTRA_PREFIX = "extra:"; // engångsuppgifter som föräldrapanelen lägger till
+const PAUSE_KEY = "pause_until"; // appen är pausad fram till och med dagen före detta datum
 
 // Speglar uppgiftslistan i app.js, i samma ordning, så rapporten alltid får
 // samma kolumnordning oavsett vilka uppgifter som var aktiva en viss dag.
@@ -288,6 +289,7 @@ async function buildSummary(env, url, request) {
     tasks,
     remindersSentToday: sentRaw ? JSON.parse(sentRaw) : [],
     supportsExtra: true,
+    pausedUntil: await readPause(env),
     extra: extras,
     lastCronAt: cronLast || null,
     affirmation: today && today.affirmationSent ? today.affirmationSent : null,
@@ -300,6 +302,16 @@ function json(data, status = 200) {
     status,
     headers: { "Content-Type": "application/json", ...CORS_HEADERS }
   });
+}
+
+// Pausen gäller till och med dagen före det sparade datumet, så
+// "2026-09-30" betyder att appen vaknar på onsdagen den 30:e.
+async function readPause(env) {
+  return (await env.PUSH_KV.get(PAUSE_KEY)) || null;
+}
+
+function isPaused(pauseUntil, dateStr) {
+  return !!pauseUntil && dateStr < pauseUntil;
 }
 
 async function readExtras(env, dateStr) {
@@ -388,6 +400,9 @@ async function runScheduledChecks(env) {
 
   const hasSub = !!(await env.PUSH_KV.get(SUBSCRIPTION_KEY));
   if (!hasSub) return;
+
+  // Pausad app hör inte av sig alls, varken påminnelser eller tjat.
+  if (isPaused(await readPause(env), dateStr)) return;
 
   // --- Fasta påminnelser ---
   const sentKey = `reminders:${dateStr}`;
@@ -573,7 +588,7 @@ export default {
     // Barnets app frågar efter dagens extrauppgifter. Öppen, precis som /sync.
     if (url.pathname === "/extra" && request.method === "GET") {
       const dateStr = url.searchParams.get("date") || stockholmParts(new Date()).dateStr;
-      return json({ date: dateStr, tasks: await readExtras(env, dateStr) });
+      return json({ date: dateStr, tasks: await readExtras(env, dateStr), pausedUntil: await readPause(env) });
     }
 
     if (url.pathname === "/report" && request.method === "GET") {
@@ -581,6 +596,23 @@ export default {
     }
 
     // Föräldrapanelen lägger till en engångsuppgift.
+    // Pausa appen, till exempel när han är hos sin mamma en extra dag.
+    // /admin/pause?until=2026-09-30 pausar, /admin/pause?clear=1 tar bort.
+    if (url.pathname === "/admin/pause" && (request.method === "GET" || request.method === "POST")) {
+      const body = request.method === "POST" ? await request.json().catch(() => ({})) : {};
+      const clear = url.searchParams.get("clear") === "1" || body.clear === true;
+      if (clear) {
+        await env.PUSH_KV.delete(PAUSE_KEY);
+        return json({ ok: true, pausedUntil: null });
+      }
+      const until = url.searchParams.get("until") || body.until;
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(until || "")) {
+        return json({ ok: false, error: "ange until=ÅÅÅÅ-MM-DD eller clear=1" }, 400);
+      }
+      await env.PUSH_KV.put(PAUSE_KEY, until);
+      return json({ ok: true, pausedUntil: until });
+    }
+
     if (url.pathname === "/admin/extra" && request.method === "POST") {
       const body = await request.json().catch(() => ({}));
       const text = (body.text || "").trim();
@@ -659,6 +691,8 @@ export default {
         `Notiser skickade igår: ${sentYesterday || "inga"}`,
         "",
         `Sync-status (app-aktivitet): ${stateRaw || "appen har aldrig synkat"}`,
+        "",
+        `Pausad till: ${(await readPause(env)) || "nej, appen är igång"}`,
         "",
         `Schemat kördes senast: ${(await env.PUSH_KV.get(CRON_HEARTBEAT_KEY)) || "ALDRIG, cron verkar inte köra alls"}`
       ];
