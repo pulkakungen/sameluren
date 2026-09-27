@@ -155,6 +155,7 @@ function extrasForSection(sectionId, date) {
 // "both" finns för extrauppgifter som ska väga tyngre.
 // date: "ÅÅÅÅ-MM-DD" gör uppgiften till en engångsgrej just den dagen.
 const DAG_MAN = 1, DAG_TIS = 2, DAG_ONS = 3, DAG_TORS = 4, DAG_FRE = 5, DAG_LOR = 6, DAG_SON = 0;
+const SKOLDAGAR = [DAG_MAN, DAG_TIS, DAG_ONS, DAG_TORS, DAG_FRE];
 
 // Samuel bor här jämna veckor från onsdagen, och åker till sin mamma på
 // onsdagar ojämna veckor. Båda onsdagarna räknas som hemma, eftersom han är
@@ -265,8 +266,8 @@ const TASK_SECTIONS = [
     title: "Till skolan",
     tasks: [
       { id: "schema", emoji: "🗓️", text: "Kolla schemat", gives: "love" },
-      { id: "packa-vaskan", emoji: "💻", text: "Packa dator och böcker", gives: "food" },
-      { id: "till-skolan", emoji: "🚲", text: "Ta dig till skolan i tid", gives: "love" }
+      { id: "packa-vaskan", emoji: "💻", text: "Packa dator och böcker", days: SKOLDAGAR, gives: "food" },
+      { id: "till-skolan", emoji: "🚲", text: "Ta dig till skolan i tid", days: SKOLDAGAR, gives: "love" }
     ]
   },
   {
