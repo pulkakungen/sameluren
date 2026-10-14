@@ -1,4 +1,4 @@
-const CACHE_NAME = "sameluren-v7";
+const CACHE_NAME = "sameluren-v8";
 const CORE_FILES = ["./", "./index.html", "./style.css", "./app.js", "./art/crow.js", "./art/bear.js", "./manifest.json"];
 
 self.addEventListener("install", (event) => {

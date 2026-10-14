@@ -229,6 +229,7 @@ async function buildSummary(env, url, request) {
   const sentRaw = await env.PUSH_KV.get(`reminders:${dateStr}`);
   const cronLast = await env.PUSH_KV.get(CRON_HEARTBEAT_KEY);
   const extras = await readExtras(env, dateStr);
+  const dodNu = await readDeath(env, dateStr);
 
   const tasks = today && Array.isArray(today.tasks) ? today.tasks : [];
 
@@ -288,8 +289,8 @@ async function buildSummary(env, url, request) {
     totalToday: tasks.length,
     tasks,
     remindersSentToday: sentRaw ? JSON.parse(sentRaw) : [],
-    dead: !!(state && state.dead),
-    deadAfterDays: state && typeof state.deadAfterDays === "number" ? state.deadAfterDays : 0,
+    dead: dodNu.dead,
+    deadAfterDays: dodNu.deadAfterDays,
     schedule: state && Array.isArray(state.schedule) ? state.schedule : null,
     supportsExtra: true,
     pausedUntil: await readPause(env),
@@ -537,6 +538,42 @@ async function buildReportCsv(env) {
   });
 }
 
+/* ---------------------------------------------------------
+   Döden. Fjorton tysta dagar och djuret dör. Beslutet ligger
+   här och inte i telefonen: en app som nollställt sin egen
+   räknare ska inte kunna sudda bort ett dödsfall. Flaggan
+   latchas och ligger kvar till appen säger att ett nytt liv
+   har börjat.
+   --------------------------------------------------------- */
+const DEATH_AFTER_DAYS = 14;
+
+function daysBetweenDateStrings(from, to) {
+  if (!from || !to) return 0;
+  return Math.round((new Date(to + "T00:00:00Z") - new Date(from + "T00:00:00Z")) / 86400000);
+}
+
+async function readDeath(env, dateStr) {
+  const raw = await env.PUSH_KV.get(STATE_KEY);
+  if (!raw) return { dead: false, deadAfterDays: 0 };
+  const s = JSON.parse(raw);
+  if (s.dead) return { dead: true, deadAfterDays: s.deadAfterDays || DEATH_AFTER_DAYS };
+  const tystaDagar = daysBetweenDateStrings(s.lastSyncDateStr, dateStr);
+  if (tystaDagar < DEATH_AFTER_DAYS) return { dead: false, deadAfterDays: 0 };
+  s.dead = true;
+  s.deadAfterDays = tystaDagar;
+  await env.PUSH_KV.put(STATE_KEY, JSON.stringify(s));
+  return { dead: true, deadAfterDays: tystaDagar };
+}
+
+async function clearDeath(env) {
+  const raw = await env.PUSH_KV.get(STATE_KEY);
+  if (!raw) return;
+  const s = JSON.parse(raw);
+  s.dead = false;
+  s.deadAfterDays = 0;
+  await env.PUSH_KV.put(STATE_KEY, JSON.stringify(s));
+}
+
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
@@ -569,10 +606,17 @@ export default {
         streak: typeof body.streak === "number" ? body.streak : null,
         petName: typeof body.petName === "string" ? body.petName : null,
         schedule: Array.isArray(body.schedule) ? body.schedule.slice(0, 120) : null,
-        dead: !!body.dead,
-        deadAfterDays: typeof body.deadAfterDays === "number" ? body.deadAfterDays : 0,
+        dead: false, // sätts strax nedan, efter att vi läst vad som redan gäller
+        deadAfterDays: 0,
         lastNagAt: null
       };
+
+      // Läs dödsläget innan vi skriver över, annars tappas det vid varje synk.
+      const dodInnan = await readDeath(env, dateStr);
+      state.dead = !!body.dead || dodInnan.dead;
+      state.deadAfterDays = state.dead
+        ? (typeof body.deadAfterDays === "number" && body.deadAfterDays) || dodInnan.deadAfterDays || DEATH_AFTER_DAYS
+        : 0;
       // behåll lastNagAt om det redan finns, så spärren inte nollas vid varje synk
       const existingRaw = await env.PUSH_KV.get(STATE_KEY);
       if (existingRaw) {
@@ -607,9 +651,21 @@ export default {
     }
 
     // Barnets app frågar efter dagens extrauppgifter. Öppen, precis som /sync.
+    // Appen trycker på Börja om och säger till att ett nytt liv har börjat.
+    // Öppen precis som /sync, det är barnets egen app som ringer.
+    if (url.pathname === "/revive" && request.method === "POST") {
+      await clearDeath(env);
+      return json({ ok: true, dead: false });
+    }
+
     if (url.pathname === "/extra" && request.method === "GET") {
       const dateStr = url.searchParams.get("date") || stockholmParts(new Date()).dateStr;
-      return json({ date: dateStr, tasks: await readExtras(env, dateStr), pausedUntil: await readPause(env) });
+      return json({
+        date: dateStr,
+        tasks: await readExtras(env, dateStr),
+        pausedUntil: await readPause(env),
+        ...(await readDeath(env, dateStr))
+      });
     }
 
     if (url.pathname === "/report" && request.method === "GET") {
