@@ -293,6 +293,7 @@ async function buildSummary(env, url, request) {
     deadAfterDays: dodNu.deadAfterDays,
     schedule: state && Array.isArray(state.schedule) ? state.schedule : null,
     supportsExtra: true,
+    supportsKill: true,
     pausedUntil: await readPause(env),
     extra: extras,
     lastCronAt: cronLast || null,
@@ -650,7 +651,6 @@ export default {
       if (!adminKeyOk(request, url, env)) return denied();
     }
 
-    // Barnets app frågar efter dagens extrauppgifter. Öppen, precis som /sync.
     // Appen trycker på Börja om och säger till att ett nytt liv har börjat.
     // Öppen precis som /sync, det är barnets egen app som ringer.
     if (url.pathname === "/revive" && request.method === "POST") {
@@ -658,6 +658,7 @@ export default {
       return json({ ok: true, dead: false });
     }
 
+    // Barnets app frågar efter dagens extrauppgifter. Öppen, precis som /sync.
     if (url.pathname === "/extra" && request.method === "GET") {
       const dateStr = url.searchParams.get("date") || stockholmParts(new Date()).dateStr;
       return json({
@@ -717,6 +718,23 @@ export default {
       return json({ ok: true, tasks: list });
     }
 
+    // Döda eller återuppliva djuret från föräldrapanelen, när räknaren
+    // hunnit nollställas eller när man bara vill testa.
+    // /admin/kill?dagar=22 och /admin/kill?revive=1
+    if (url.pathname === "/admin/kill" && (request.method === "GET" || request.method === "POST")) {
+      if (url.searchParams.get("revive") === "1") {
+        await clearDeath(env);
+        return json({ ok: true, dead: false });
+      }
+      const dagar = parseInt(url.searchParams.get("dagar") || "", 10);
+      const raw = await env.PUSH_KV.get(STATE_KEY);
+      const s = raw ? JSON.parse(raw) : { lastSyncAt: null, lastSyncDateStr: null };
+      s.dead = true;
+      s.deadAfterDays = Number.isFinite(dagar) && dagar > 0 ? dagar : DEATH_AFTER_DAYS;
+      await env.PUSH_KV.put(STATE_KEY, JSON.stringify(s));
+      return json({ ok: true, dead: true, deadAfterDays: s.deadAfterDays });
+    }
+
     if (url.pathname === "/admin/summary" && request.method === "GET") {
       return json(await buildSummary(env, url, request));
     }
@@ -770,6 +788,15 @@ export default {
         `Sync-status (app-aktivitet): ${stateRaw || "appen har aldrig synkat"}`,
         "",
         `Pausad till: ${(await readPause(env)) || "nej, appen är igång"}`,
+        "",
+        `Djuret: ${
+          (await readDeath(env, dateStr)).dead
+            ? `DÖTT efter ${(await readDeath(env, dateStr)).deadAfterDays} tysta dagar`
+            : "lever"
+        }`,
+        `Appen synkade senast: ${
+          stateRaw ? JSON.parse(stateRaw).lastSyncDateStr || "okänt datum" : "aldrig"
+        } (dör efter ${DEATH_AFTER_DAYS} tysta dagar)`,
         "",
         `Schemat kördes senast: ${(await env.PUSH_KV.get(CRON_HEARTBEAT_KEY)) || "ALDRIG, cron verkar inte köra alls"}`
       ];
