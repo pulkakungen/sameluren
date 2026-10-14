@@ -90,7 +90,9 @@ function syncStateToWorker() {
       happiness: state.happiness,
       level: state.level,
       streak: state.streak,
-      petName: state.petName
+      petName: state.petName,
+      dead: !!state.dead,
+      deadAfterDays: state.deadAfterDays || 0
     })
   }).catch(() => {});
 }
@@ -509,7 +511,10 @@ function defaultState() {
     totalCompleted: 0,
     sectionsCollapsed: {},
     levelResetV1Applied: false,
-    pausedUntil: null
+    pausedUntil: null,
+    dead: false,
+    deadOn: null,
+    deadAfterDays: 0
   };
 }
 
@@ -891,10 +896,13 @@ function completeTask(taskId, sectionId) {
 
   if (!state.rewardedToday[taskId]) {
     state.rewardedToday[taskId] = true;
-    state.xp += XP_PER_TASK;
-    const gives = (taskById(taskId) || {}).gives === "love" ? "love" : (taskById(taskId) || {}).gives === "both" ? "both" : "food";
-    if (gives !== "food") state.love = clamp(state.love + LOVE_PER_TASK, 0, MAX_LOVE);
-    if (gives !== "love") state.food = clamp(state.food + FOOD_PER_TASK, 0, MAX_FOOD);
+    // "none" kommer från föräldrapanelen: uppgiften bockas av men ger varken
+    // mat, kärlek eller xp.
+    const valt = (taskById(taskId) || {}).gives;
+    const gives = ["food", "love", "both", "none"].includes(valt) ? valt : "food";
+    if (gives !== "none") state.xp += XP_PER_TASK;
+    if (gives === "love" || gives === "both") state.love = clamp(state.love + LOVE_PER_TASK, 0, MAX_LOVE);
+    if (gives === "food" || gives === "both") state.food = clamp(state.food + FOOD_PER_TASK, 0, MAX_FOOD);
     state.totalCompleted += 1;
 
     const levelBefore = state.level;
@@ -908,10 +916,12 @@ function completeTask(taskId, sectionId) {
     }
 
     showToast(pick(TASK_MESSAGES));
-    burstConfetti(14);
-    floatEmojiFromPet(gives === "love" ? "🧡" : petInfo().foodEmoji);
-    if (gives === "both") setTimeout(() => floatEmojiFromPet("🧡"), 180);
-    flashMood(gives === "love" ? "love" : "yum", 900);
+    if (gives !== "none") {
+      burstConfetti(14);
+      floatEmojiFromPet(gives === "love" ? "🧡" : petInfo().foodEmoji);
+      if (gives === "both") setTimeout(() => floatEmojiFromPet("🧡"), 180);
+      flashMood(gives === "love" ? "love" : "yum", 900);
+    }
 
     if (leveledUp) {
       setTimeout(() => {
@@ -1129,8 +1139,63 @@ function initAppEvents() {
 /* ---------------------------------------------------------
    Init
    --------------------------------------------------------- */
+/* ---------------------------------------------------------
+   Fjorton dagar utan ett enda besök och djuret dör. Gravstenen
+   ligger kvar varje gång appen öppnas, tills man trycker på
+   knappen och börjar om från början.
+   --------------------------------------------------------- */
+const DEATH_AFTER_DAYS = 14;
+
+function daysBetweenDates(fromStr, toStr) {
+  if (!fromStr || !toStr) return 0;
+  return Math.round((new Date(toStr + "T00:00:00") - new Date(fromStr + "T00:00:00")) / 86400000);
+}
+
+function daysAway() {
+  return daysBetweenDates(state.lastActiveDate, todayStr());
+}
+
+function checkPetDeath() {
+  if (state.dead) return true;
+  if (!state.petType || !state.lastActiveDate) return false;
+  if (daysAway() < DEATH_AFTER_DAYS) return false;
+  state.dead = true;
+  state.deadOn = todayStr();
+  state.deadAfterDays = daysAway();
+  saveState();
+  return true;
+}
+
+function showGraveScreen() {
+  document.querySelectorAll(".screen").forEach((el) => el.classList.remove("active"));
+  document.getElementById("screen-grave").classList.add("active");
+  document.getElementById("grave-name").textContent = state.petName || "ditt djur";
+
+  const delar = [];
+  if (state.level) delar.push("Nivå " + state.level);
+  if (state.streak) delar.push("längsta streak " + state.streak);
+  if (state.totalCompleted) delar.push(state.totalCompleted + " avbockade uppgifter");
+  delar.push("ensam i " + state.deadAfterDays + " dagar");
+  document.getElementById("grave-epitaph").textContent = delar.join(" · ");
+
+  document.getElementById("grave-restart").addEventListener(
+    "click",
+    () => {
+      localStorage.removeItem(STORAGE_KEY);
+      location.reload();
+    },
+    { once: true }
+  );
+}
+
 function init() {
   loadExtras();
+  if (checkPetDeath()) {
+    showGraveScreen();
+    registerServiceWorker();
+    syncStateToWorker(); // så föräldrapanelen ser gravstenen den också
+    return;
+  }
   handleDailyReset();
   applyStatDecay();
   initAppEvents();

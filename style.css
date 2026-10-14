@@ -633,3 +633,45 @@ button {
   .pet-choice { width: 45%; }
   .pet-avatar-big { width: 124px; height: 124px; }
 }
+
+/* ---------- gravsten ---------- */
+#screen-grave.active {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.grave-card {
+  text-align: center;
+  max-width: 420px;
+}
+.grave-art {
+  width: 160px;
+  height: 160px;
+  display: block;
+  margin: 0 auto 4px;
+}
+.grave-art .g-ground { fill: var(--navy-700); }
+.grave-art .g-stone { fill: #3d4a63; stroke: #56688c; stroke-width: 3; }
+.grave-art .g-mark { stroke: var(--ice-soft); stroke-width: 6; stroke-linecap: round; fill: none; }
+.grave-art .g-grass { stroke: var(--navy-600); stroke-width: 4; stroke-linecap: round; fill: none; }
+.grave-art .g-flower { fill: var(--orange); }
+.grave-title {
+  font-size: 1.4rem;
+  color: var(--ice);
+  margin: 0 0 6px;
+}
+.grave-epitaph {
+  color: var(--ice-soft);
+  font-weight: 600;
+  margin: 0 0 14px;
+}
+.grave-note {
+  color: var(--ice-soft);
+  margin: 0 0 10px;
+  line-height: 1.5;
+}
+.grave-note.soft {
+  font-size: 0.92rem;
+  opacity: 0.8;
+  margin-bottom: 20px;
+}

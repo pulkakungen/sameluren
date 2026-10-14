@@ -288,6 +288,8 @@ async function buildSummary(env, url, request) {
     totalToday: tasks.length,
     tasks,
     remindersSentToday: sentRaw ? JSON.parse(sentRaw) : [],
+    dead: !!(state && state.dead),
+    deadAfterDays: state && typeof state.deadAfterDays === "number" ? state.deadAfterDays : 0,
     supportsExtra: true,
     pausedUntil: await readPause(env),
     extra: extras,
@@ -410,6 +412,11 @@ async function runScheduledChecks(env) {
 
   const hasSub = !!(await env.PUSH_KV.get(SUBSCRIPTION_KEY));
   if (!hasSub) return;
+
+  // Ett dött djur hör inte av sig. Gravstenen ligger kvar i appen tills
+  // man börjar om, och då synkar appen igen med dead satt till false.
+  const doodRaw = await env.PUSH_KV.get(STATE_KEY);
+  if (doodRaw && JSON.parse(doodRaw).dead) return;
 
   // Pausad app hör inte av sig alls, varken påminnelser eller tjat.
   if (isPaused(await readPause(env), dateStr, minutesOfDay)) return;
@@ -560,6 +567,8 @@ export default {
         level: typeof body.level === "number" ? body.level : null,
         streak: typeof body.streak === "number" ? body.streak : null,
         petName: typeof body.petName === "string" ? body.petName : null,
+        dead: !!body.dead,
+        deadAfterDays: typeof body.deadAfterDays === "number" ? body.deadAfterDays : 0,
         lastNagAt: null
       };
       // behåll lastNagAt om det redan finns, så spärren inte nollas vid varje synk
@@ -633,7 +642,7 @@ export default {
         id: "extra-" + dateStr + "-" + Math.random().toString(36).slice(2, 8),
         emoji: (body.emoji || "⭐").slice(0, 4),
         text: text.slice(0, 80),
-        gives: ["food", "love", "both"].includes(body.gives) ? body.gives : "both",
+        gives: ["food", "love", "both", "none"].includes(body.gives) ? body.gives : "both",
         section: body.section || "hemma",
         date: dateStr
       };
