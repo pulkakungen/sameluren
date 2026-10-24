@@ -1,5 +1,5 @@
-const CACHE_NAME = "sameluren-v9";
-const CORE_FILES = ["./", "./index.html", "./style.css", "./app.js", "./art/crow.js", "./art/bear.js", "./manifest.json"];
+const CACHE_NAME = "sameluren-v10";
+const CORE_FILES = ["./", "./index.html", "./style.css", "./app.js", "./art/crow.js", "./art/bear.js", "./art/halloween.js", "./manifest.json"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(CORE_FILES)));

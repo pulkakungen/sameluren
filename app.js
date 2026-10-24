@@ -708,7 +708,25 @@ function petSizeScale(level) {
   return 1;
 }
 
+/* ---------------------------------------------------------
+   Halloween: djuren går under lakan veckan kring 31 oktober.
+   ?halloween=1 tvingar fram det, ?halloween=0 stänger av.
+   --------------------------------------------------------- */
+const HALLOWEEN_PARAM = new URLSearchParams(location.search).get("halloween");
+
+function halloweenOn(date = new Date()) {
+  if (HALLOWEEN_PARAM === "1") return true;
+  if (HALLOWEEN_PARAM === "0") return false;
+  const m = date.getMonth() + 1;
+  const d = date.getDate();
+  return (m === 10 && d >= 24) || (m === 11 && d <= 1);
+}
+
 function petSVG(type, mood, level) {
+  if (halloweenOn() && typeof HALLOWEEN_ART === "object") {
+    const spoke = HALLOWEEN_ART[type] || HALLOWEEN_ART.crow;
+    if (spoke) return spoke;
+  }
   const art = PET_ART[type] || PET_ART.crow;
   const moodPose = (PET_MOOD_POSES[type] || CROW_MOOD_POSES)[mood];
   const pose = moodPose || idlePose(type, level).pose;
