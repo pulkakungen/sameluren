@@ -675,3 +675,11 @@ button {
   opacity: 0.8;
   margin-bottom: 20px;
 }
+
+/* halloweenbilden ska fylla samma ruta som djurens svg */
+.halloween-bild {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+}

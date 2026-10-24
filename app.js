@@ -722,10 +722,17 @@ function halloweenOn(date = new Date()) {
   return (m === 10 && d >= 24) || (m === 11 && d <= 1);
 }
 
+// Kråkans halloweenbild är ritad på riktigt och ligger som png.
+const HALLOWEEN_BILDER = { crow: "art/halloween-crow.png" };
+
 function petSVG(type, mood, level) {
-  if (halloweenOn() && typeof HALLOWEEN_ART === "object") {
-    const spoke = HALLOWEEN_ART[type] || HALLOWEEN_ART.crow;
-    if (spoke) return spoke;
+  if (halloweenOn()) {
+    const bild = HALLOWEEN_BILDER[type];
+    if (bild) return `<img src="${bild}" alt="Spöke" class="halloween-bild" />`;
+    if (typeof HALLOWEEN_ART === "object") {
+      const spoke = HALLOWEEN_ART[type];
+      if (spoke) return spoke;
+    }
   }
   const art = PET_ART[type] || PET_ART.crow;
   const moodPose = (PET_MOOD_POSES[type] || CROW_MOOD_POSES)[mood];
