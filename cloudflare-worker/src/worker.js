@@ -228,7 +228,7 @@ async function buildSummary(env, url, request) {
   const today = todayRaw ? JSON.parse(todayRaw) : null;
   const sentRaw = await env.PUSH_KV.get(`reminders:${dateStr}`);
   const cronLast = await env.PUSH_KV.get(CRON_HEARTBEAT_KEY);
-  const extras = await readExtras(env, dateStr);
+  const extras = await readExtrasWithCarry(env, dateStr);
   const dodNu = await readDeath(env, dateStr);
 
   const tasks = today && Array.isArray(today.tasks) ? today.tasks : [];
@@ -338,6 +338,57 @@ async function readExtras(env, dateStr) {
 async function writeExtras(env, dateStr, list) {
   // sparas i två månader, sen städar KV bort dem av sig själv
   await env.PUSH_KV.put(EXTRA_PREFIX + dateStr, JSON.stringify(list), { expirationTtl: 60 * 60 * 24 * 60 });
+}
+
+// Extrauppgifter som inte blev gjorda följer med till nästa dag, tills de
+// bockas av eller tas bort i panelen. De ligger kvar under sitt ursprungliga
+// datum i KV och får dagens datum när de lämnas ut, så apparna behöver
+// inte veta om det. Bara dagens lista får med sig gamla, och bara de
+// senaste EXTRA_CARRY_DAYS dagarna letas igenom.
+const EXTRA_CARRY_DAYS = 14;
+
+function extraAddDays(dateStr, n) {
+  const d = new Date(dateStr + "T12:00:00Z");
+  d.setUTCDate(d.getUTCDate() + n);
+  return d.toISOString().slice(0, 10);
+}
+
+// id ser ut som extra-2026-11-15-ab12cd, så ursprungsdagen går att läsa ut.
+function extraDateFromId(id) {
+  const m = /^extra-(\d{4}-\d{2}-\d{2})-/.exec(String(id || ""));
+  return m ? m[1] : null;
+}
+
+async function readExtrasWithCarry(env, dateStr) {
+  const today = stockholmParts(new Date()).dateStr;
+  const own = await readExtras(env, dateStr);
+  if (dateStr !== today) return own;
+
+  const days = [];
+  for (let i = EXTRA_CARRY_DAYS; i >= 1; i--) days.push(extraAddDays(today, -i));
+  const lists = await Promise.all(days.map((d) => readExtras(env, d)));
+  const pending = [];
+  days.forEach((d, i) => lists[i].forEach((t) => pending.push({ ...t, date: d })));
+  if (!pending.length) return own;
+
+  // Gjord någon dag från ursprungsdagen till igår räknas som klar. Bockas
+  // den av idag ska den ändå synas idag, avbockad.
+  const first = pending[0].date;
+  const historyDays = days.filter((d) => d >= first);
+  const records = await Promise.all(
+    historyDays.map(async (d) => {
+      const raw = await env.PUSH_KV.get(HISTORY_PREFIX + d);
+      return raw ? JSON.parse(raw) : null;
+    })
+  );
+  const done = new Set();
+  records.forEach((r) => ((r && r.tasks) || []).forEach((t) => t && t.done && done.add(t.id)));
+
+  const ownIds = new Set(own.map((t) => t.id));
+  const carried = pending
+    .filter((t) => !done.has(t.id) && !ownIds.has(t.id))
+    .map((t) => ({ ...t, fromDate: t.date, date: today }));
+  return carried.concat(own);
 }
 
 async function mergeHistoryRecord(env, dateStr, patch) {
@@ -663,7 +714,7 @@ export default {
       const dateStr = url.searchParams.get("date") || stockholmParts(new Date()).dateStr;
       return json({
         date: dateStr,
-        tasks: await readExtras(env, dateStr),
+        tasks: await readExtrasWithCarry(env, dateStr),
         pausedUntil: await readPause(env),
         ...(await readDeath(env, dateStr))
       });
@@ -712,7 +763,7 @@ export default {
 
     if (url.pathname === "/admin/extra/delete" && request.method === "POST") {
       const body = await request.json().catch(() => ({}));
-      const dateStr = body.date || stockholmParts(new Date()).dateStr;
+      const dateStr = extraDateFromId(body.id) || body.date || stockholmParts(new Date()).dateStr;
       const list = (await readExtras(env, dateStr)).filter((t) => t.id !== body.id);
       await writeExtras(env, dateStr, list);
       return json({ ok: true, tasks: list });
