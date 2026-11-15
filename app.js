@@ -336,16 +336,16 @@ const TASK_SECTIONS = [
       // Sopvändorna varvas med Sassa så båda gör båda sorterna. Hans turer:
       // matsopor onsdag och lördag jämn vecka samt måndag ojämn, plast torsdag
       // jämn vecka och tisdag ojämn. Resten av dagarna är hennes.
-      { id: "matsopor", emoji: "🍂", text: "Gå ut med matsopor", home: true, gives: "food",
+      { id: "matsopor", kvar: true, emoji: "🍂", text: "Gå ut med matsopor", home: true, gives: "food",
         slots: [{ day: DAG_ONS, weeks: "even" }, { day: DAG_LOR, weeks: "even" }, { day: DAG_MAN, weeks: "odd" }] },
-      { id: "plastsopor", emoji: "♻️", text: "Gå ut med plastsopor", home: true, gives: "love",
+      { id: "plastsopor", kvar: true, emoji: "♻️", text: "Gå ut med plastsopor", home: true, gives: "love",
         slots: [{ day: DAG_TORS, weeks: "even" }, { day: DAG_TIS, weeks: "odd" }] },
-      { id: "metallglas", emoji: "🍾", text: "Gå ut med metall- och glassopor", days: [DAG_SON], home: true, gives: "food" },
-      { id: "papperkartong", emoji: "📦", text: "Gå ut med papper och kartong", days: [DAG_SON], home: true, gives: "love" },
-      { id: "restavfall", emoji: "🗑️", text: "Gå ut med restavfall", days: [DAG_SON], home: true, gives: "food" },
-      { id: "tvatten", emoji: "🧺", text: "Gå ner med tvätten", days: [DAG_MAN, DAG_TORS], home: true, gives: "love" },
+      { id: "metallglas", kvar: true, emoji: "🍾", text: "Gå ut med metall- och glassopor", days: [DAG_SON], home: true, gives: "food" },
+      { id: "papperkartong", kvar: true, emoji: "📦", text: "Gå ut med papper och kartong", days: [DAG_SON], home: true, gives: "love" },
+      { id: "restavfall", kvar: true, emoji: "🗑️", text: "Gå ut med restavfall", days: [DAG_SON], home: true, gives: "food" },
+      { id: "tvatten", kvar: true, emoji: "🧺", text: "Gå ner med tvätten", days: [DAG_MAN, DAG_TORS], home: true, gives: "love" },
       { id: "snygga-rum", emoji: "🧹", text: "Plocka undan rummet", home: true, gives: "food" },
-      { id: "dammsuga", emoji: "🌀", text: "Dammsuga", days: [DAG_LOR], home: true, gives: "love" },
+      { id: "dammsuga", kvar: true, emoji: "🌀", text: "Dammsuga", days: [DAG_LOR], home: true, gives: "love" },
       { id: "diskmaskin", emoji: "🍽️", text: "Töm eller fyll diskmaskinen", home: true, gives: "food" },
       // Extrauppgifter för en enskild dag. Ge dem gärna "both", de väger tyngre.
       { id: "presentpapper-2026-09-18", emoji: "🎁", text: "Ta ner presentpapper i källaren", date: "2026-09-18", gives: "both" },
@@ -413,10 +413,54 @@ function isTaskActiveOnDate(task, date) {
 function isTaskActiveToday(task) {
   return isTaskActiveOnDate(task, new Date());
 }
+/* Sysslor som ligger kvar (kvar: true), till exempel soporna, följer med
+   till nästa dag tills de blir gjorda. Allt annat, som att gå upp eller
+   ta sig till skolan, försvinner vid midnatt som vanligt.
+   state.carried håller id och dagen sysslan först skulle ha gjorts. */
+function carriedOn(task, d) {
+  if (!task.kvar || !state.carried || !state.carried[task.id]) return false;
+  if (dateKey(d) !== state.lastActiveDate) return false;
+  if (task.home && !isHomeOnDate(d)) return false;
+  return true;
+}
+
+function carriedSince(task) {
+  if (!state.carried || !state.carried[task.id]) return "";
+  if (isTaskActiveOnDate(task, new Date())) return "";
+  const dag = new Date(state.carried[task.id] + "T12:00:00");
+  return WEEKDAY_NAMES[dag.getDay()];
+}
+
+// Körs vid dagsbytet, innan dagens bockar nollas.
+function carryOverChores(today) {
+  const last = state.lastActiveDate;
+  const carried = { ...(state.carried || {}) };
+  const scheduled = (t, d) => !isPausedOn(d) && isTaskActiveOnDate(t, d);
+  const kvar = [];
+  TASK_SECTIONS.forEach((sec) => sec.tasks.forEach((t) => t.kvar && kvar.push(t)));
+
+  if (last) {
+    const lastDate = new Date(last + "T12:00:00");
+    kvar.forEach((t) => {
+      if (state.completedToday[t.id]) delete carried[t.id];
+      else if (!carried[t.id] && scheduled(t, lastDate)) carried[t.id] = last;
+    });
+    // dagar då appen inte öppnades alls
+    const d = new Date(lastDate);
+    d.setDate(d.getDate() + 1);
+    for (let i = 0; i < 31 && dateKey(d) < today; i++, d.setDate(d.getDate() + 1)) {
+      kvar.forEach((t) => {
+        if (!carried[t.id] && scheduled(t, d)) carried[t.id] = dateKey(d);
+      });
+    }
+  }
+  state.carried = carried;
+}
+
 function activeTasksForSection(section, date) {
   const d = date === undefined ? new Date() : date;
   if (isPausedOn(d)) return [];
-  return section.tasks.filter((t) => isTaskActiveOnDate(t, d)).concat(extrasForSection(section.id, d));
+  return section.tasks.filter((t) => isTaskActiveOnDate(t, d) || carriedOn(t, d)).concat(extrasForSection(section.id, d));
 }
 function totalTasksForDate(date) {
   return TASK_SECTIONS.reduce((s, sec) => s + activeTasksForSection(sec, date).length, 0);
@@ -623,6 +667,7 @@ function handleDailyReset() {
     }
   }
 
+  carryOverChores(today);
   state.completedToday = {};
   state.rewardedToday = {};
   state.lastActiveDate = today;
@@ -883,7 +928,7 @@ function renderTaskSections() {
             <li class="task-item${done ? " done" : ""}" data-task="${t.id}" data-section="${section.id}">
               <span class="task-checkbox">${done ? "✓" : ""}</span>
               <span class="task-emoji">${t.emoji}</span>
-              <span class="task-label">${t.text}</span>
+              <span class="task-label">${t.text}${carriedSince(t) ? ` <small class="task-carried">sedan ${carriedSince(t)}</small>` : ""}</span>
             </li>`;
           })
           .join("")}
